@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Syllable } from "./api";
 import { chaoToSt, check, contour, spokenTones, track, type Point } from "./pitch";
 import { MAX_SECONDS, supported, useRecorder } from "./recorder";
@@ -9,10 +9,27 @@ import { MAX_SECONDS, supported, useRecorder } from "./recorder";
 const W = 280, H = 120, ST = 8; // chart size; y axis spans ±8 semitones
 
 export function Practice({ word, syllables, onSpeak }: { word: string; syllables: Syllable[]; onSpeak?: () => void }) {
-  const { recording, take, error, start, stop } = useRecorder();
+  const { recording, take, error, live, start, stop } = useRecorder();
   const audio = useRef<HTMLAudioElement>(null);
+  const [playhead, setPlayhead] = useState<number | null>(null); // seconds into "Mine" while it plays
+  const raf = useRef<number>();
+  useEffect(() => () => cancelAnimationFrame(raf.current ?? 0), []);
+
+  function playMine() {
+    const a = audio.current;
+    if (!a) return;
+    a.currentTime = 0;
+    void a.play();
+    const tick = () => {
+      setPlayhead(a.currentTime);
+      if (!a.paused && !a.ended) raf.current = requestAnimationFrame(tick);
+      else setPlayhead(null);
+    };
+    raf.current = requestAnimationFrame(tick);
+  }
   const tonal = syllables.length > 0 && syllables.every((s) => s.tone >= 1 && s.tone <= 5);
 
+  const livePts = useMemo(() => (live ? contour(live.frames) : []), [live]);
   const analysis = useMemo(() => {
     if (!take || !tonal) return null;
     const pts = contour(track(take.samples, take.sr));
@@ -39,21 +56,29 @@ export function Practice({ word, syllables, onSpeak }: { word: string; syllables
           </button>
         )}
         {take && (
-          <button className="speak" onClick={() => audio.current?.play()}>
+          <button className="speak" onClick={playMine}>
             ▶ Mine
           </button>
         )}
         {take && <audio ref={audio} src={take.url} preload="auto" />}
       </div>
-      {recording && <p className="hint small">Say “{word}”, then press Stop.</p>}
+      {recording && (
+        <>
+          <p className="hint small">Say “{word}”, then press Stop.</p>
+          <div className="rec-progress" role="progressbar" aria-label="Recording time" aria-valuemin={0} aria-valuemax={MAX_SECONDS} aria-valuenow={Math.round(live?.elapsed ?? 0)}>
+            <span style={{ width: `${Math.min(100, ((live?.elapsed ?? 0) / MAX_SECONDS) * 100)}%` }} />
+          </div>
+          <Chart pts={livePts} tones={[]} domain={[0, Math.max(2, live?.elapsed ?? 0)]} />
+        </>
+      )}
       {error && <p className="error small">{error}</p>}
 
-      {analysis && (
+      {analysis && !recording && (
         analysis.pts.length === 0 ? (
           <p className="hint small">Couldn't hear a clear voice. Try again a bit louder, closer to the mic.</p>
         ) : (
           <>
-            <Chart pts={analysis.pts} tones={syllables.map((s) => s.tone)} />
+            <Chart pts={analysis.pts} tones={syllables.map((s) => s.tone)} playhead={playhead} />
             <ul className="tone-checks">
               {analysis.checks.map((c, i) => (
                 <li key={i} className={c.ok === true ? "good" : c.ok === false ? "bad" : ""}>
@@ -75,8 +100,11 @@ export function Practice({ word, syllables, onSpeak }: { word: string; syllables
 
 const want = (tone: number) => ({ 1: "level", 2: "rising", 3: "low/dipping", 4: "falling" })[tone] ?? "any";
 
-function Chart({ pts, tones }: { pts: Point[]; tones: number[] }) {
-  const t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+// Your pitch over the tone shapes. Live mode (while recording) passes a fixed
+// time domain and no tones; after recording the x axis spans your voiced part
+// and a playhead follows the replay.
+function Chart({ pts, tones, domain, playhead }: { pts: Point[]; tones: number[]; domain?: [number, number]; playhead?: number | null }) {
+  const [t0, t1] = domain ?? (pts.length ? [pts[0].t, pts[pts.length - 1].t] : [0, 1]);
   const span = Math.max(t1 - t0, 0.05);
   const x = (t: number) => ((t - t0) / span) * W;
   const y = (st: number) => H / 2 - (Math.max(-ST, Math.min(ST, st)) / ST) * (H / 2);
@@ -107,6 +135,7 @@ function Chart({ pts, tones }: { pts: Point[]; tones: number[] }) {
       {paths.map((p, i) => (
         <path key={i} d={p} className="mine" />
       ))}
+      {playhead != null && playhead >= t0 && playhead <= t1 && <line x1={x(playhead)} x2={x(playhead)} y1={0} y2={H} className="playhead" />}
     </svg>
   );
 }

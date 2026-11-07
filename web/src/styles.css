@@ -164,3 +164,13 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .tone-checks li.bad { color: var(--tone1); }
 .tone-checks li > span { font-weight: 600; }
 .error.small { font-size: .85rem; }
+
+/* Speech progress: a line pinned to the top of the window while audio plays,
+   and the word being read highlighted in the reader */
+.speech-progress { position: fixed; top: 0; left: 0; right: 0; height: 4px; z-index: 11; background: var(--border); }
+.speech-progress > span { display: block; height: 100%; background: var(--accent); transition: width .1s linear; }
+.word.speaking { background: var(--active); box-shadow: inset 0 -3px 0 var(--accent); }
+@media (prefers-reduced-motion: reduce) { .speech-progress > span { transition: none; } }
+.rec-progress { height: 4px; margin-top: 6px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.rec-progress > span { display: block; height: 100%; background: var(--tone1); }
+.pitch .playhead { stroke: var(--accent); stroke-width: 2; }

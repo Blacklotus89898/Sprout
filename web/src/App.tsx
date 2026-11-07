@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import * as api from "./api";
 import type { Features, Language, ReadResult, Token } from "./api";
 import { MAX_HISTORY, useHistory, type HistoryItem } from "./history";
-import { speak, stop, supported as speechSupported, useSpeaking, useVoice } from "./speech";
+import { speak, stop, supported as speechSupported, useSpeaking, useSpeechProgress, useVoice } from "./speech";
 import { Practice } from "./Practice";
 import { Translate } from "./Translate";
 
@@ -23,6 +23,7 @@ export function App() {
   const history = useHistory();
   const voice = useVoice(result?.lang ?? lang);
   const speaking = useSpeaking();
+  const progress = useSpeechProgress();
   const [features, setFeatures] = useState<Features | null>(null);
 
   useEffect(() => {
@@ -69,6 +70,18 @@ export function App() {
   const words = result?.tokens.filter((t) => t.kind === "word").length ?? 0;
   const sel = selected !== null ? result?.tokens[selected] : undefined;
   const canSpeak = speechSupported && !!voice;
+  const fullText = result ? result.tokens.map((t) => t.text).join("") : "";
+  // The token being spoken while the whole text is read aloud. Speech
+  // positions are UTF-16 indexes, so walk the tokens in that unit.
+  let speakingAt = -1;
+  if (progress && result && progress.text === fullText) {
+    for (let i = 0, off = 0; i < result.tokens.length; off += result.tokens[i].text.length, i++) {
+      if (progress.pos < off + result.tokens[i].text.length) {
+        speakingAt = i;
+        break;
+      }
+    }
+  }
 
   return (
     <div className="app">
@@ -111,11 +124,11 @@ export function App() {
         <main className="reader-layout">
           <article className="reader" lang={result.lang}>
             {result.tokens.map((t, i) => (
-              <TokenView key={i} t={t} showReading={showReading} active={i === selected} onPick={() => pick(i)} />
+              <TokenView key={i} t={t} showReading={showReading} active={i === selected} speaking={i === speakingAt} onPick={() => pick(i)} />
             ))}
             <p className="stats">
               {canSpeak && (
-                <button className="speak" onClick={() => say(result.tokens.map((t) => t.text).join(""))} aria-label="Read the whole text aloud">
+                <button className="speak" onClick={() => say(fullText)} aria-label="Read the whole text aloud">
                   🔊 Read aloud
                 </button>
               )}
@@ -135,9 +148,21 @@ export function App() {
       {features && <Translate langs={langs} features={features} initialText={result ? result.tokens.map((t) => t.text).join("") : text} initialLang={result?.lang ?? lang} slow={slow} />}
 
       {speaking && (
-        <button className="stop" onClick={stop} aria-label="Stop audio">
-          ■ Stop
-        </button>
+        <>
+          <div
+            className="speech-progress"
+            role="progressbar"
+            aria-label="Speech progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round((progress?.fraction ?? 0) * 100)}
+          >
+            <span style={{ width: `${(progress?.fraction ?? 0) * 100}%` }} />
+          </div>
+          <button className="stop" onClick={stop} aria-label="Stop audio">
+            ■ Stop
+          </button>
+        </>
       )}
 
       <footer>
@@ -181,15 +206,15 @@ function HistoryList({ items, onOpen, onClear }: { items: HistoryItem[]; onOpen:
   );
 }
 
-function TokenView({ t, showReading, active, onPick }: { t: Token; showReading: boolean; active: boolean; onPick: () => void }) {
-  if (t.kind !== "word") return <span className={t.kind}>{t.text}</span>;
+function TokenView({ t, showReading, active, speaking, onPick }: { t: Token; showReading: boolean; active: boolean; speaking: boolean; onPick: () => void }) {
+  if (t.kind !== "word") return <span className={`${t.kind}${speaking ? " speaking" : ""}`}>{t.text}</span>;
   const sense = t.senses?.[0];
   const syl = sense?.syllables ?? [];
   const chars = [...t.text];
   // Color per character by tone only when syllables line up 1:1 with characters.
   const aligned = syl.length === chars.length;
   return (
-    <button className={`word${active ? " active" : ""}${sense ? "" : " unknown"}`} onClick={onPick} title={sense?.defs[0]}>
+    <button className={`word${active ? " active" : ""}${speaking ? " speaking" : ""}${sense ? "" : " unknown"}`} onClick={onPick} title={sense?.defs[0]}>
       {chars.map((c, i) => (
         <ruby key={i} className={aligned ? `tone${syl[i].tone}` : undefined}>
           {c}

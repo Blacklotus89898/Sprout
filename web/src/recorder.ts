@@ -3,7 +3,7 @@
 // is uploaded or stored (ADR 0001 §5); a new take replaces the old one.
 
 import { useEffect, useRef, useState } from "react";
-import { ANALYSIS_RATE } from "./pitch";
+import { ANALYSIS_RATE, yin, type Frame } from "./pitch";
 
 export const supported =
   typeof window !== "undefined" &&
@@ -14,12 +14,17 @@ export const MAX_SECONDS = 8;
 
 export type Take = { url: string; samples: Float32Array; sr: number; seconds: number };
 
+/** What the mic hears while recording: elapsed seconds and a live pitch track. */
+export type Live = { elapsed: number; frames: Frame[] };
+
 export function useRecorder() {
   const [recording, setRecording] = useState(false);
   const [take, setTake] = useState<Take | null>(null);
   const [error, setError] = useState("");
   const rec = useRef<MediaRecorder | null>(null);
   const timer = useRef<number>();
+  const [live, setLive] = useState<Live | null>(null);
+  const raf = useRef<number>();
 
   // Free the previous take's blob URL whenever it is replaced or unmounted.
   useEffect(() => () => {
@@ -41,12 +46,14 @@ export function useRecorder() {
       setError(e instanceof DOMException && e.name === "NotAllowedError" ? "Microphone permission was denied." : `No microphone: ${String(e)}`);
       return;
     }
+    const stopLive = listen(stream, setLive, raf);
     const chunks: Blob[] = [];
     const r = new MediaRecorder(stream);
     r.ondataavailable = (e) => e.data.size && chunks.push(e.data);
     r.onstop = async () => {
       stream.getTracks().forEach((t) => t.stop()); // release the mic (indicator off)
       window.clearTimeout(timer.current);
+      stopLive();
       setRecording(false);
       const blob = new Blob(chunks, { type: r.mimeType });
       try {
@@ -66,7 +73,45 @@ export function useRecorder() {
     if (rec.current?.state === "recording") rec.current.stop();
   }
 
-  return { recording, take, error, start, stop };
+  return { recording, take, error, live, start, stop };
+}
+
+/**
+ * Live pitch while recording: an AnalyserNode tapped off the mic, sampled
+ * every animation frame, decimated to ~16 kHz so YIN stays cheap on phones.
+ * Returns a function that stops listening.
+ */
+function listen(stream: MediaStream, onLive: (l: Live | null) => void, raf: { current?: number }): () => void {
+  const ctx = new AudioContext();
+  const an = ctx.createAnalyser();
+  an.fftSize = 2048;
+  ctx.createMediaStreamSource(stream).connect(an);
+  const raw = new Float32Array(an.fftSize);
+  const k = Math.max(1, Math.round(ctx.sampleRate / ANALYSIS_RATE));
+  const small = new Float32Array(Math.floor(raw.length / k));
+  const t0 = performance.now();
+  const frames: Frame[] = [];
+  const tick = () => {
+    an.getFloatTimeDomainData(raw);
+    let e = 0;
+    for (let i = 0; i < small.length; i++) {
+      let s = 0;
+      for (let j = 0; j < k; j++) s += raw[i * k + j];
+      small[i] = s / k;
+      e += small[i] * small[i];
+    }
+    const t = (performance.now() - t0) / 1000;
+    const loud = Math.sqrt(e / small.length) > 0.01;
+    frames.push({ t, f0: loud ? yin(small, ctx.sampleRate / k) : null });
+    onLive({ elapsed: t, frames: frames.slice() });
+    raf.current = requestAnimationFrame(tick);
+  };
+  raf.current = requestAnimationFrame(tick);
+  return () => {
+    if (raf.current) cancelAnimationFrame(raf.current);
+    void ctx.close();
+    onLive(null);
+  };
 }
 
 /** Decode a recording to mono samples at ANALYSIS_RATE (resampled by the browser). */

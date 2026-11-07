@@ -55,6 +55,32 @@ export function useSpeaking(): boolean {
   return on;
 }
 
+// Progress of the current utterance, for the progress line and the
+// highlighted word. Engines that fire word "boundary" events give the exact
+// position; the rest (several Chinese voices) get an estimate from elapsed
+// time, which the end event then snaps to 100%.
+export type Progress = { text: string; pos: number; fraction: number };
+const progressListeners = new Set<(p: Progress | null) => void>();
+function setProgress(p: Progress | null) {
+  progressListeners.forEach((l) => l(p));
+}
+
+/** Where speech currently is; null when nothing is playing. */
+export function useSpeechProgress(): Progress | null {
+  const [p, setP] = useState<Progress | null>(null);
+  useEffect(() => {
+    progressListeners.add(setP);
+    return () => {
+      progressListeners.delete(setP);
+    };
+  }, []);
+  return p;
+}
+
+// Rough characters per second at rate 1, for the time-based estimate.
+const CPS: Record<string, number> = { "cmn-Hans": 5, "yue-Hant": 5 };
+let ticker: number | undefined;
+
 /** Speak text, cancelling anything already playing. */
 export function speak(text: string, pack: string, voice: SpeechSynthesisVoice | undefined, slow: boolean) {
   if (!supported || !text.trim()) return;
@@ -63,9 +89,31 @@ export function speak(text: string, pack: string, voice: SpeechSynthesisVoice | 
   u.lang = voice?.lang ?? SPEECH_LANG[pack] ?? pack;
   if (voice) u.voice = voice;
   u.rate = slow ? 0.6 : 0.9; // learners: a touch below native speed by default
-  u.onstart = () => setSpeaking(true);
+  const len = text.length;
+  const report = (pos: number) => setProgress({ text, pos, fraction: Math.min(1, pos / len) });
+  let boundaries = false;
+  let started = 0;
+  let mine: number | undefined; // this utterance's timer: a cancelled one must not stop the next one's
+  window.clearInterval(ticker);
+  u.onstart = () => {
+    setSpeaking(true);
+    started = performance.now();
+    report(0);
+    const cps = (CPS[pack] ?? 14) * u.rate;
+    ticker = mine = window.setInterval(() => {
+      if (!boundaries) report(Math.min(len * 0.97, ((performance.now() - started) / 1000) * cps));
+    }, 100);
+  };
+  u.onboundary = (e) => {
+    boundaries = true;
+    report(e.charIndex);
+  };
   // A cancel() fires onerror ("interrupted") or onend: either way, not speaking.
-  u.onend = u.onerror = () => setSpeaking(speechSynthesis.speaking);
+  u.onend = u.onerror = () => {
+    window.clearInterval(mine);
+    setSpeaking(speechSynthesis.speaking);
+    if (!speechSynthesis.speaking) setProgress(null);
+  };
   speechSynthesis.speak(u);
 }
 
@@ -73,5 +121,7 @@ export function speak(text: string, pack: string, voice: SpeechSynthesisVoice | 
 export function stop() {
   if (!supported) return;
   speechSynthesis.cancel();
+  window.clearInterval(ticker);
   setSpeaking(false);
+  setProgress(null);
 }
