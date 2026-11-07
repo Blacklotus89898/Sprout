@@ -16,15 +16,19 @@ Design: [ADR 0001](docs/adr/0001-architecture.md).
 
 ## Status
 
-Phase 0 is a skeleton. It has the platform endpoints, the three language packs
-(seed dictionaries only), and the alignment validator behind color-matched
-translation. The reader, reviews, speech and the tutor are phases 1 to 5.
+**Phase 1a: the Mandarin reader is live.** Paste Chinese text and it is split
+into words using the embedded CC-CEDICT. Each word shows tone-colored pinyin;
+tap one to see its readings and definitions. Next is phase 1b: tap to make a
+card, which needs storage. After that come reviews (FSRS), color-matched
+translation, speech, and the tutor (ADR 0001 phases).
 
 ## Run
 
 ```bash
 go test ./...
-go run . -addr :8080
+(cd web && npm ci && npm run build)   # optional: without it, / shows a hint
+go run . -addr :8080                  # http://localhost:8080
+# UI development: run `go run .` plus `cd web && npm run dev` (http://localhost:5173, proxies /api)
 curl localhost:8080/health
 curl localhost:8080/api/languages
 curl -X POST localhost:8080/api/tokenize -d '{"lang":"yue-Hant","text":"我哋鍾意講廣東話！"}'
@@ -36,6 +40,8 @@ curl -X POST localhost:8080/api/tokenize -d '{"lang":"yue-Hant","text":"我哋�
 | `GET /metrics` | Prometheus text: `sprout_build_info`, `sprout_language_packs` |
 | `GET /api/languages` | The registered language packs |
 | `POST /api/tokenize` | `{lang, text}` → tokens with byte offsets and kinds |
+| `POST /api/read` | `{lang, text}` → tokens, each word with dictionary senses (reading, tones, definitions) |
+| `GET /` | The reader (React app, embedded) |
 
 ## Layout
 
@@ -43,6 +49,9 @@ curl -X POST localhost:8080/api/tokenize -d '{"lang":"yue-Hant","text":"我哋�
 |---|---|
 | `internal/lang` | Language packs: segmentation, romanization, script (deterministic) |
 | `internal/align` | Validates Claude's word-alignment proposals; maps tokens to colors |
+| `internal/dict` | CC-CEDICT parser plus the embedded export (`data/`) |
+| `internal/pinyin` | Numbered pinyin → tone marks and tone numbers |
+| `web/` | React/TS reader (Vite); `npm run build` → `web/dist`, embedded by `web/embed.go` |
 | `docs/adr` | Decisions |
 
 ## Deploy
@@ -51,3 +60,9 @@ On every push to `main`, CI pushes `ghcr.io/blacklotus89898/sprout:<sha>`.
 The Homelab side (ArgoCD app, route `sprout.lab.home`, monitoring) comes from
 **Backstage → Create → New Homelab Service**. To roll out a new version, bump the
 SHA in Homelab `services/sprout/deployment.yaml`.
+
+## Data credits
+
+- **[CC-CEDICT](https://cc-cedict.org)**, published by MDBG, licensed
+  [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Referenced work:
+  CEDICT © 1997, 1998 Paul Andrew Denisowski. See `internal/dict/data/README.md`.

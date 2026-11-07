@@ -10,7 +10,8 @@
 
 # web build output / deps (web/ arrives in phase 1)
 node_modules/
-web/dist/
+web/dist/*
+!web/dist/.gitkeep
 
 # secrets never live here (.env is for local dev only)
 .env

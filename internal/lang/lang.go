@@ -40,6 +40,28 @@ type Pack interface {
 	Tokenize(text string) []Token
 }
 
+// Sense is one dictionary reading of a word, in a language-neutral shape the
+// reader renders directly. Syllables carry tones for tonal languages.
+type Sense struct {
+	Headword  string     `json:"headword"`
+	Variant   string     `json:"variant,omitempty"` // the other script (traditional for cmn-Hans)
+	Reading   string     `json:"reading,omitempty"` // "xué xí"
+	Syllables []Syllable `json:"syllables,omitempty"`
+	Defs      []string   `json:"defs"`
+}
+
+// Syllable is one romanized syllable with its tone (0 = untoned).
+type Syllable struct {
+	Text string `json:"text"`
+	Tone int    `json:"tone"`
+}
+
+// Dictionary is implemented by packs that ship a lexicon.
+type Dictionary interface {
+	Lookup(word string) []Sense
+	DictVersion() string // e.g. "CC-CEDICT 2026-11-07T03:55:59Z"
+}
+
 var registry = map[string]Pack{}
 
 // Register adds a pack; packs register themselves in init().
@@ -118,7 +140,7 @@ func splitRuns(text string, han func(run string, base int) []Token) []Token {
 // (longest dictionary word first, single character as the fallback). It is
 // the deterministic baseline; a smarter segmenter can replace it per pack
 // without changing the Token contract.
-func MaxMatch(dict map[string]bool, maxRunes int) func(run string, base int) []Token {
+func MaxMatch(has func(string) bool, maxRunes int) func(run string, base int) []Token {
 	return func(run string, base int) []Token {
 		runes := []rune(run)
 		var out []Token
@@ -126,7 +148,7 @@ func MaxMatch(dict map[string]bool, maxRunes int) func(run string, base int) []T
 		for p := 0; p < len(runes); {
 			n := 1
 			for l := min(maxRunes, len(runes)-p); l > 1; l-- {
-				if dict[string(runes[p:p+l])] {
+				if has(string(runes[p : p+l])) {
 					n = l
 					break
 				}

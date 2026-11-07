@@ -2,14 +2,14 @@ name: Build and Push Sprout Image
 
 # Pushes ghcr.io/blacklotus89898/sprout:<commit-sha> on main. SHA tags only —
 # no :latest (the Homelab deploys pin a SHA; Kyverno rejects :latest anyway).
-# First push creates a PRIVATE package: flip it to public once in the GitHub
+# (The first push of a new branch can skip path filters: run it by hand once.)
 # UI (Packages → sprout → Package settings) or the cluster gets ImagePullBackOff.
 on:
   push:
     branches: [main]
-    paths: ['Dockerfile', 'go.mod', '**.go', '**.html', '.github/workflows/build-image.yaml']
+    paths: ['Dockerfile', 'go.mod', '**.go', 'internal/dict/data/**', 'web/**', '.github/workflows/build-image.yaml']
   pull_request:
-    paths: ['Dockerfile', 'go.mod', '**.go', '**.html', '.github/workflows/build-image.yaml']
+    paths: ['Dockerfile', 'go.mod', '**.go', 'internal/dict/data/**', 'web/**', '.github/workflows/build-image.yaml']
   workflow_dispatch:
 
 jobs:

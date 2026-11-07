@@ -115,7 +115,7 @@ UX, a frontend, retention. Infrastructure is the smaller part.
 | Phase | Ships | Exit check |
 |---|---|---|
 | 0 | This skeleton: `/health`, `/metrics`, language packs, alignment validator, CI, image; onboarded via Backstage | `sprout.lab.home/health` returns 200 through the gateway |
-| 1 | Reader: paste text, URL or `.srt` → tokens with readings → tap for a gloss → make a card. Real lexicons. `web/` app. | Read a real article in the first language |
+| 1 | **1a done (2026-11-07):** reader with CC-CEDICT, pinyin, tone colors. **1b:** cards plus storage; URL and `.srt` import. Overall goal: paste text, URL or `.srt` → tokens with readings → tap for a gloss → make a card. Real lexicons. `web/` app. | Read a real article in the first language |
 | 2 | Reviews: FSRS scheduler, review UI, journal | 14 days of reviews, retention chart |
 | 3 | Color-matched translation (§4) in the reader and on cards | Alignment validity rate ≥ 95% on a 100-sentence set |
 | 4 | Speech: TTS playback, shadowing, tone contour; provider spike (§5) | Spike result recorded as an ADR |
