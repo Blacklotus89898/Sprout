@@ -1,0 +1,16 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: sprout-source
+  title: Sprout (source)
+  description: "Language-learning platform: read, mine, review, speak (Mandarin, Cantonese, Spanish)"
+  annotations:
+    github.com/project-slug: Blacklotus89898/Sprout
+  tags:
+    - go
+    - language-learning
+spec:
+  type: library
+  lifecycle: experimental
+  owner: user:blacklotus89898
+  system: homelab

@@ -1,0 +1,21 @@
+# binaries
+/sprout
+*.exe
+
+# local state
+/data/
+*.db
+*.db-wal
+*.db-shm
+
+# web build output / deps (web/ arrives in phase 1)
+node_modules/
+web/dist/
+
+# secrets never live here (.env is for local dev only)
+.env
+
+# editors / OS
+.idea/
+.vscode/
+Thumbs.db
