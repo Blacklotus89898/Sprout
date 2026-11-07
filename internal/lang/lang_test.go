@@ -31,8 +31,10 @@ func TestTokenize(t *testing.T) {
 	}{
 		{"cmn-Hans", "我们喜欢学习中文。", []string{"我们", "喜欢", "学习", "中文"}},
 		{"cmn-Hans", "今天天气非常好", []string{"今天", "天气", "非常", "好"}},
-		{"cmn-Hans", "用Go写代码", []string{"用", "Go", "写", "代码"}}, // Han/Latin boundary
-		{"yue-Hant", "我哋食飯", []string{"我哋", "食", "飯"}},         // not in the seed dict: 1 rune each
+		{"cmn-Hans", "用Go写代码", []string{"用", "Go", "写", "代码"}},       // Han/Latin boundary
+		{"cmn-Hans", "他说明天会下雨", []string{"他", "说", "明天", "会", "下雨"}}, // forward-only gives 说明|天
+		{"cmn-Hans", "研究生命起源", []string{"研究", "生命", "起源"}},           // classic: not 研究生|命
+		{"yue-Hant", "我哋食飯", []string{"我哋", "食", "飯"}},               // not in the seed dict: 1 rune each
 		{"yue-Hant", "我哋鍾意講廣東話！", []string{"我哋", "鍾意", "講", "廣東話"}},
 		{"es", "¿Dónde está la biblioteca?", []string{"Dónde", "está", "la", "biblioteca"}},
 		{"es", "Hace 3 días, ¡qué calor!", []string{"Hace", "3", "días", "qué", "calor"}},

@@ -67,3 +67,19 @@ func TestInvalidAlignments(t *testing.T) {
 		}
 	}
 }
+
+func TestPartialSkipsCoverage(t *testing.T) {
+	a := fixture(t)
+	a.Links = []Link{{Src: []int{1}, Tgt: []int{2}}} // only 天气 ↔ weather
+	if err := a.Validate(); err == nil {
+		t.Fatal("full mode accepted an uncovered sentence")
+	}
+	a.Partial = true
+	if err := a.Validate(); err != nil {
+		t.Fatalf("partial mode: %v", err)
+	}
+	a.Links = append(a.Links, Link{Src: []int{1}, Tgt: []int{4}}) // 天气 in two links
+	if err := a.Validate(); err == nil {
+		t.Fatal("partial mode must still reject a token in two links")
+	}
+}

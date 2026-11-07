@@ -136,28 +136,73 @@ func splitRuns(text string, han func(run string, base int) []Token) []Token {
 	return out
 }
 
-// MaxMatch segments a Han run by forward maximum matching against dict
-// (longest dictionary word first, single character as the fallback). It is
-// the deterministic baseline; a smarter segmenter can replace it per pack
-// without changing the Token contract.
+// MaxMatch segments a Han run by bidirectional maximum matching against the
+// dictionary: forward (longest word from the left) and backward (longest
+// word from the right), keeping the result with fewer words, then fewer
+// single characters, then backward (the usual tie-break for Chinese).
+// "他说明天" → forward 他|说明|天 ("he explains day"), backward 他|说|明天
+// ("he says tomorrow"): same count, backward has fewer single characters.
+// It is the deterministic baseline; a smarter segmenter can replace it per
+// pack without changing the Token contract.
 func MaxMatch(has func(string) bool, maxRunes int) func(run string, base int) []Token {
 	return func(run string, base int) []Token {
 		runes := []rune(run)
-		var out []Token
+		fwd, bwd := forward(runes, has, maxRunes), backward(runes, has, maxRunes)
+		pick := bwd
+		if len(fwd) < len(bwd) || (len(fwd) == len(bwd) && singles(fwd) < singles(bwd)) {
+			pick = fwd
+		}
+		out := make([]Token, 0, len(pick))
 		off := base
-		for p := 0; p < len(runes); {
-			n := 1
-			for l := min(maxRunes, len(runes)-p); l > 1; l-- {
-				if has(string(runes[p : p+l])) {
-					n = l
-					break
-				}
-			}
-			s := string(runes[p : p+n])
-			out = append(out, Token{Text: s, Start: off, End: off + len(s), Kind: Word})
-			off += len(s)
-			p += n
+		for _, w := range pick {
+			out = append(out, Token{Text: w, Start: off, End: off + len(w), Kind: Word})
+			off += len(w)
 		}
 		return out
 	}
+}
+
+func forward(r []rune, has func(string) bool, maxRunes int) []string {
+	var out []string
+	for p := 0; p < len(r); {
+		n := 1
+		for l := min(maxRunes, len(r)-p); l > 1; l-- {
+			if has(string(r[p : p+l])) {
+				n = l
+				break
+			}
+		}
+		out = append(out, string(r[p:p+n]))
+		p += n
+	}
+	return out
+}
+
+func backward(r []rune, has func(string) bool, maxRunes int) []string {
+	var rev []string
+	for e := len(r); e > 0; {
+		n := 1
+		for l := min(maxRunes, e); l > 1; l-- {
+			if has(string(r[e-l : e])) {
+				n = l
+				break
+			}
+		}
+		rev = append(rev, string(r[e-n:e]))
+		e -= n
+	}
+	for i, j := 0, len(rev)-1; i < j; i, j = i+1, j-1 {
+		rev[i], rev[j] = rev[j], rev[i]
+	}
+	return rev
+}
+
+func singles(ws []string) int {
+	n := 0
+	for _, w := range ws {
+		if utf8.RuneCountInString(w) == 1 {
+			n++
+		}
+	}
+	return n
 }

@@ -1,10 +1,10 @@
-// Package align validates word-by-word translation alignments, the data
-// behind the color-matched sentence view (ADR 0001 §4).
+// Package align checks word-by-word translation mappings, the data behind
+// the color-matched view, and turns them into colors.
 //
-// The split of work: tokenization of BOTH sides is deterministic
-// (internal/lang); Claude only proposes Links between token indices; this
-// package decides whether a proposal is acceptable. An invalid proposal is
-// rejected (and retried or shown without colors) — never rendered half-wrong.
+// Whoever proposes a mapping (today the CC-CEDICT matcher in
+// internal/translate, ADR 0002), this package decides whether it is
+// well-formed before anything is rendered. A malformed mapping is never
+// shown half-right: the translation is shown without colors instead.
 package align
 
 import (
@@ -26,6 +26,9 @@ type Alignment struct {
 	SrcWords []bool `json:"-"` // which source tokens are words (from lang.Token.Kind)
 	TgtWords []bool `json:"-"`
 	Links    []Link `json:"links"`
+	// Partial skips the coverage rule: a dictionary-based mapping colors only
+	// what it can prove and leaves the rest uncolored (ADR 0002).
+	Partial bool `json:"-"`
 }
 
 // Validate enforces the invariants the renderer relies on:
@@ -33,7 +36,8 @@ type Alignment struct {
 //   - no token belongs to two links (one token = one color);
 //   - every link has at least one source token (target-only links are
 //     allowed to be absent: "do", articles... may stay uncolored);
-//   - every source word is covered — the learner's sentence is fully explained.
+//   - every source word is covered (the learner's sentence is fully
+//     explained), unless Partial is set.
 //
 // It returns all problems joined, so a retry prompt can quote them back.
 func (a Alignment) Validate() error {
@@ -64,7 +68,7 @@ func (a Alignment) Validate() error {
 		check("tgt", l.Tgt, a.TgtWords, tgtSeen)
 	}
 	for i, isWord := range a.SrcWords {
-		if _, ok := srcSeen[i]; isWord && !ok {
+		if _, ok := srcSeen[i]; isWord && !ok && !a.Partial {
 			errs = append(errs, fmt.Errorf("src word %d not covered by any link", i))
 		}
 	}

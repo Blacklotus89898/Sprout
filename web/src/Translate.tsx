@@ -3,9 +3,10 @@ import * as api from "./api";
 import type { Features, Language, TranslateResult } from "./api";
 import { speak, supported as speechSupported, useVoice } from "./speech";
 
-// Color-matched translation (ADR 0001 §4): each source word and the piece of
-// the translation that renders it share a color. Hovering or tapping one side
-// highlights its partner on the other.
+// Color-matched translation (ADR 0002): Google translates; Sprout's own
+// dictionary colors a Chinese word and an English word alike only when the
+// word's CC-CEDICT definitions contain it. Unproven words stay plain.
+// Hovering or tapping one side highlights its partner on the other.
 
 const PALETTE = 10; // .c0 … .c9 in styles.css, reused cyclically
 
@@ -62,7 +63,7 @@ export function Translate({
     return (
       <section className="translate">
         <h2>Translate</h2>
-        <p className="hint">Translation isn't configured on this server yet (it needs a Claude API key).</p>
+        <p className="hint">Translation isn't configured on this server yet (it needs a Google Translate API key).</p>
       </section>
     );
   }
@@ -116,12 +117,14 @@ export function Translate({
             })}
           </p>
           <p className="side target" lang={result.target}>
-            {result.segments.map((s, j) => {
-              const c = result.segColors?.[j];
-              return (
+            {result.tgtTokens.map((t, j) => {
+              const c = result.tgtColors?.[j];
+              return t.kind === "word" ? (
                 <span key={j} className={cls(c)} onMouseEnter={() => c !== undefined && c >= 0 && setFocus(c)} onClick={() => setFocus(c ?? null)}>
-                  {s.text}
+                  {t.text}
                 </span>
+              ) : (
+                <span key={j}>{t.text}</span>
               );
             })}
             {speechSupported && voiceTo && (
@@ -130,8 +133,13 @@ export function Translate({
               </button>
             )}
           </p>
-          {!result.aligned && <p className="hint">{result.note}</p>}
-          <p className="hint small">Machine translation by Claude. Matching colors show which words translate which.</p>
+          {result.srcColors && (
+            <p className="hint small">
+              {result.matched} of {result.words} words matched by the dictionary. Matching colors are words the dictionary confirms; plain words weren't proven.
+            </p>
+          )}
+          {result.note && <p className="hint">{result.note}</p>}
+          <p className="hint small">Translation: Google Translate. Word matching: CC-CEDICT, no AI.</p>
         </div>
       )}
     </section>

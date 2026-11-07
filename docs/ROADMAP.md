@@ -9,11 +9,12 @@ design choices get an ADR first; those items are marked *(ADR)*.
 - [x] Mandarin reader: CC-CEDICT segmentation, tone-marked pinyin, tone colors, tap for every reading and definition (1a)
 - [x] Pronunciation with the device's speech voices, per word and for the whole text; slow mode; **Stop**
 - [x] History: last 100 texts and words, kept in the browser only
-- [x] Translation between Mandarin, Cantonese, Spanish and English, **color-matched word by word** (Claude proposes the mapping; `align.Validate` decides; retried once, otherwise shown without colors)
+- [x] Translation between Mandarin, Cantonese, Spanish and English (Google). **Word colors from the dictionary, no LLM** (ADR 0002): about 70% of words colored, and every color correct
+- [x] Bidirectional segmentation (他说明天 → 他|说|明天)
 
 ## Next: phase 1b, keeping what you learn
 
-1. [ ] **Accounts** *(ADR 0002: hosting + auth)*. You and your friends; magic-link email or passkeys. Every row has a `user_id` from day one.
+1. [ ] **Accounts** *(ADR 0003: hosting + auth)*. You and your friends; magic-link email or passkeys. Every row has a `user_id` from day one.
 2. [ ] **Cards:** "＋ Card" on a word saves the word, its reading, your chosen sense and the **sentence it came from**. Needs SQLite on a 1Gi PVC (Recreate rollout).
 3. [ ] **Known-word tracking:** words you mark known stop being highlighted; the reader shows "% of this text you know".
 4. [ ] **Import:** paste a URL (article text extraction), upload `.srt`/`.vtt` subtitles, or an EPUB chapter.
@@ -32,7 +33,8 @@ design choices get an ADR first; those items are marked *(ADR)*.
 11. [ ] **Traditional ⇄ Simplified toggle** (OpenCC data, Apache-2.0).
 12. [ ] **Sentence mode:** split long texts into sentences and translate each lazily, all color-matched.
 13. [ ] **Example sentences** for a word (Tatoeba, CC BY 2.0) with audio.
-14. [ ] **Grammar notes:** Claude explains a sentence's structure on request (cached per sentence).
+14. [ ] **Grammar notes:** curated patterns (了, 把, 被, 的/得/地) matched by rules; an LLM explanation only as a later opt-in.
+14b. [ ] **Better word colors:** extend glosses with lemma forms (went → go), match multi-word English phrases, add the Spanish dictionary.
 15. [ ] **Measure-word and tone-sandhi hints** (不/一 sandhi, third-tone pairs): deterministic rules, shown on the pinyin.
 
 ## Phase 4: speaking and pronunciation
@@ -55,9 +57,9 @@ design choices get an ADR first; those items are marked *(ADR)*.
 
 ## Platform and operations
 
-25. [ ] **Public hosting for friends** *(ADR 0002)*: `sprout.lab.home` is LAN-only.
+25. [ ] **Public hosting for friends** *(ADR 0003)*: `sprout.lab.home` is LAN-only.
 26. [ ] **Mobile:** PWA install, offline cache of the dictionary and today's cards.
-27. [ ] **Cost guardrails for Claude calls:** per-user daily quota, a cost metric in `/metrics`, an alert on spend.
+27. [ ] **Cost guardrails for Google Translate:** per-user daily quota, a characters-used metric in `/metrics`, an alert before the free 500k/month runs out.
 28. [ ] **Persistent translation cache** in SQLite, so restarts don't pay twice.
-29. [ ] **Metrics:** `sprout_translate_total{aligned}`, alignment validity rate (the phase-3 exit check is ≥ 95%), lookups and reviews per day.
+29. [ ] **Metrics:** `sprout_translate_total`, the share of words colored, lookups and reviews per day.
 30. [ ] **Backups** of the SQLite DB (Litestream or a nightly copy off the node).

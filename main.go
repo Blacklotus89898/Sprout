@@ -26,7 +26,7 @@ var version = "dev" // stamped at build time (-ldflags -X main.version=<sha>)
 // translator is nil when no API key is configured.
 var translator *translate.Translator
 
-// translateLimit caps paid Claude calls across all users: a cheap brake on a
+// translateLimit caps paid Google calls across all users: a cheap brake on a
 // runaway client or a shared link (cached repeats don't count against it).
 var translateLimit = newRateLimit(30, time.Minute)
 
@@ -50,13 +50,13 @@ func main() {
 		Handler:           routes(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	// Translation needs a Claude API key (a SealedSecret in Homelab). Without
+	// Translation needs a Google Cloud Translation API key (a SealedSecret in Homelab). Without
 	// one, the rest of Sprout works and /api/translate answers 503.
-	if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
-		translator = translate.New(translate.NewClaude(key, os.Getenv("SPROUT_TRANSLATE_MODEL")))
+	if key := os.Getenv("GOOGLE_TRANSLATE_API_KEY"); key != "" {
+		translator = translate.New(&translate.Google{Key: key})
 		log.Info("translation enabled")
 	} else {
-		log.Info("translation disabled: ANTHROPIC_API_KEY not set")
+		log.Info("translation disabled: GOOGLE_TRANSLATE_API_KEY not set")
 	}
 	log.Info("sprout starting", "addr", *addr, "version", version)
 	if err := srv.ListenAndServe(); err != nil {
@@ -146,10 +146,10 @@ func routes() http.Handler {
 	})
 
 	// POST /api/translate {"lang","target","text"} → translation segments with
-	// word colors (ADR 0001 §4). 503 when no API key is configured.
+	// dictionary word colors (ADR 0002). 503 when no API key is configured.
 	mux.HandleFunc("POST /api/translate", func(w http.ResponseWriter, r *http.Request) {
 		if translator == nil {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "translation is not configured on this server (no Claude API key)"})
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "translation is not configured on this server (no Google Translate API key)"})
 			return
 		}
 		var in struct {

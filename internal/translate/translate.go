@@ -1,35 +1,33 @@
-// Package translate turns a sentence into a translation whose pieces are
-// linked back to the source words: the data behind the color-matched view
-// (ADR 0001 §4).
+// Package translate translates text and colors the words that match
+// (ADR 0002, superseding the LLM mapping in ADR 0001 §4).
 //
-// The split of work: the source is tokenized deterministically (internal/lang);
-// Claude returns the translation as ordered segments, each listing the source
-// word indices it translates; internal/align decides whether that mapping is
-// acceptable. An invalid mapping is retried once with the errors quoted back.
-// If it fails again, the translation is still returned, without colors.
-// A half-wrong coloring is never shown.
+// The split of work, with no LLM anywhere: an Engine (Google Cloud
+// Translation) produces the translated text; both sides are tokenized by
+// Sprout's own language packs; the CC-CEDICT dictionary decides which
+// Chinese word matches which English word; internal/align checks the result
+// is well-formed before any color is shown. Words the dictionary can't prove
+// stay uncolored. A wrong color is never shown.
 package translate
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/Blacklotus89898/Sprout/internal/align"
+	"github.com/Blacklotus89898/Sprout/internal/dict"
 	"github.com/Blacklotus89898/Sprout/internal/lang"
 )
 
-// MaxRunes caps one request: translation is billed per token, and the reader
-// is about sentences and short paragraphs, not documents.
+// MaxRunes caps one request (Google bills per character).
 const MaxRunes = 1000
 
-// Segment is one piece of the translation, in target order.
-type Segment struct {
-	Text string `json:"text"`
-	Src  []int  `json:"src"` // source token indices; empty = no source counterpart
+// Engine turns text into a translation. note is optional and user-visible
+// (e.g. a language fallback).
+type Engine interface {
+	Translate(ctx context.Context, text, from, to string) (translation, note string, err error)
 }
 
 // Result is what the API returns to the web app.
@@ -38,50 +36,42 @@ type Result struct {
 	Target      string       `json:"target"`
 	SrcTokens   []lang.Token `json:"srcTokens"`
 	Translation string       `json:"translation"`
-	Segments    []Segment    `json:"segments"`
-	// Colors: per source token and per segment, the link (color) index or -1.
-	// Nil when the alignment didn't validate (the translation is still good).
-	SrcColors []int  `json:"srcColors,omitempty"`
-	SegColors []int  `json:"segColors,omitempty"`
-	Aligned   bool   `json:"aligned"`
-	Note      string `json:"note,omitempty"` // why it isn't aligned, if it isn't
+	TgtTokens   []lang.Token `json:"tgtTokens"`
+	// Per token: the color (link) index, or -1 for uncolored. Nil when no
+	// dictionary covers this language pair.
+	SrcColors []int `json:"srcColors,omitempty"`
+	TgtColors []int `json:"tgtColors,omitempty"`
+	// Matched / Words: how many source words got a color.
+	Matched int    `json:"matched"`
+	Words   int    `json:"words"`
+	Note    string `json:"note,omitempty"`
 }
 
-// Model proposes segments. The Claude implementation is in claude.go; tests
-// use a fake. feedback is empty on the first attempt and carries the
-// validator's errors on the retry.
-type Model interface {
-	Segments(ctx context.Context, req Request, feedback string) ([]Segment, error)
-}
-
-// Request is what the model sees.
-type Request struct {
-	SourceName, TargetName string
-	Tokens                 []lang.Token
-}
-
-// Translator runs the propose → validate → (retry) → color pipeline.
-type Translator struct {
-	Model Model
-	cache *lru
-}
-
-// New returns a Translator with a small in-memory cache, so the same
-// sentence is paid for once per process (ADR 0001 §4: cached per sentence).
-func New(m Model) *Translator { return &Translator{Model: m, cache: newLRU(500)} }
-
-// Targets are the languages a translation can go to: the learning packs plus English.
-var Targets = map[string]string{"en": "English", "cmn-Hans": "Mandarin Chinese (Simplified)", "yue-Hant": "Cantonese (Traditional Chinese, colloquial written Cantonese)", "es": "Spanish"}
+// Targets are the languages a translation can go to.
+var Targets = map[string]string{"en": "English", "cmn-Hans": "Mandarin (Simplified)", "yue-Hant": "Cantonese (Traditional)", "es": "Spanish"}
 
 // ErrInput is a bad request (unknown language, empty or oversized text).
 var ErrInput = errors.New("bad translation request")
 
-// Translate translates text from the src pack into the target language.
+// Translator runs translate → tokenize → dictionary colors, with a cache so
+// a repeated sentence costs nothing.
+type Translator struct {
+	Engine Engine
+	Dict   func() *dict.CEDICT
+	cache  *lru
+}
+
+// New returns a Translator using the embedded CC-CEDICT.
+func New(e Engine) *Translator {
+	return &Translator{Engine: e, Dict: dict.Default, cache: newLRU(500)}
+}
+
+// Translate translates text from the src pack into the target pack.
 func (t *Translator) Translate(ctx context.Context, src lang.Pack, target, text string) (*Result, error) {
 	text = strings.TrimSpace(text)
-	tgtName, ok := Targets[target]
+	tgt, ok := lang.Get(target)
 	switch {
-	case !ok:
+	case !ok || Targets[target] == "":
 		return nil, fmt.Errorf("%w: unknown target %q", ErrInput, target)
 	case target == src.Code():
 		return nil, fmt.Errorf("%w: source and target are the same", ErrInput)
@@ -95,69 +85,60 @@ func (t *Translator) Translate(ctx context.Context, src lang.Pack, target, text 
 		return r, nil
 	}
 
-	toks := src.Tokenize(text)
-	req := Request{SourceName: Targets[src.Code()], TargetName: tgtName, Tokens: toks}
-	if req.SourceName == "" {
-		req.SourceName = src.Name()
+	out, note, err := t.Engine.Translate(ctx, text, src.Code(), target)
+	if err != nil {
+		return nil, err
 	}
-	res := &Result{Source: src.Code(), Target: target, SrcTokens: toks}
-
-	feedback := ""
-	for attempt := 0; attempt < 2; attempt++ {
-		segs, err := t.Model.Segments(ctx, req, feedback)
-		if err != nil {
-			return nil, err
+	res := &Result{Source: src.Code(), Target: target, SrcTokens: src.Tokenize(text), Translation: out, TgtTokens: tgt.Tokenize(out), Note: note}
+	for _, tk := range res.SrcTokens {
+		if tk.Kind == lang.Word {
+			res.Words++
 		}
-		res.Segments = segs
-		res.Translation = join(segs)
-		srcColors, segColors, err := colors(toks, segs)
-		if err == nil {
-			res.SrcColors, res.SegColors, res.Aligned, res.Note = srcColors, segColors, true, ""
-			break
-		}
-		res.Note = "word colors unavailable: the model's word mapping didn't validate"
-		feedback = err.Error()
 	}
+	t.color(res)
 	t.cache.put(key, res)
 	return res, nil
 }
 
-func join(segs []Segment) string {
-	var b strings.Builder
-	for _, s := range segs {
-		b.WriteString(s.Text)
-	}
-	return b.String()
-}
-
-// colors converts segments into align.Links (segments with the same source
-// set share one link, so "ne … pas" is one color), validates them, and maps
-// tokens and segments to color indices.
-func colors(toks []lang.Token, segs []Segment) (src, seg []int, err error) {
-	a := align.Alignment{SrcWords: make([]bool, len(toks)), TgtWords: make([]bool, len(segs))}
-	for i, tk := range toks {
-		a.SrcWords[i] = tk.Kind == lang.Word
-	}
-	linkOf := map[string]int{}
-	for j, s := range segs {
-		if len(s.Src) == 0 {
-			continue
+// color fills SrcColors/TgtColors for Chinese ↔ English pairs.
+func (t *Translator) color(res *Result) {
+	var pairs [][2]int // (srcIndex, tgtIndex)
+	switch {
+	case isChinese(res.Source) && res.Target == "en":
+		pairs = dictLinks(t.Dict(), res.Source, res.SrcTokens, res.TgtTokens)
+	case res.Source == "en" && isChinese(res.Target):
+		for _, p := range dictLinks(t.Dict(), res.Target, res.TgtTokens, res.SrcTokens) {
+			pairs = append(pairs, [2]int{p[1], p[0]})
 		}
-		a.TgtWords[j] = true
-		set := append([]int(nil), s.Src...)
-		sort.Ints(set)
-		k := fmt.Sprint(set)
-		li, ok := linkOf[k]
-		if !ok {
-			li = len(a.Links)
-			linkOf[k] = li
-			a.Links = append(a.Links, align.Link{Src: set})
-		}
-		a.Links[li].Tgt = append(a.Links[li].Tgt, j)
+	default:
+		res.Note = joinNote(res.Note, "Word colors work between Chinese and English for now (they need a dictionary for both sides).")
+		return
+	}
+	a := align.Alignment{SrcWords: words(res.SrcTokens), TgtWords: words(res.TgtTokens), Partial: true}
+	for _, p := range pairs {
+		a.Links = append(a.Links, align.Link{Src: []int{p[0]}, Tgt: []int{p[1]}})
 	}
 	if err := a.Validate(); err != nil {
-		return nil, nil, err
+		// Can't happen with dictLinks' one-to-one pairs; if it does, show no
+		// colors rather than wrong ones.
+		res.Note = joinNote(res.Note, "word colors unavailable")
+		return
 	}
-	src, seg = a.Colors()
-	return src, seg, nil
+	res.SrcColors, res.TgtColors = a.Colors()
+	res.Matched = len(pairs)
+}
+
+func words(toks []lang.Token) []bool {
+	m := make([]bool, len(toks))
+	for i, tk := range toks {
+		m[i] = tk.Kind == lang.Word
+	}
+	return m
+}
+
+func joinNote(a, b string) string {
+	if a == "" {
+		return b
+	}
+	return a + " " + b
 }

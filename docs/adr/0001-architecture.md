@@ -65,6 +65,8 @@ UX, a frontend, retention. Infrastructure is the smaller part.
      event, so learning curves and retention come for free (Tulip's pattern).
 
 4. **Color-matched translation is LLM-proposed and code-validated (`internal/align`).**
+   *Superseded by [ADR 0002](0002-translation-google-and-dictionary-colors.md): Google
+   translates, the dictionary decides the colors, no LLM.*
    1. Both sentences are tokenized deterministically.
    2. Claude receives the two token arrays and returns only **links between
       index groups**, for example `{src:[1], tgt:[0,2]}` for 天气 ↔ "The weather".

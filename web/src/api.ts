@@ -58,20 +58,16 @@ export interface Features {
   translateMaxChars: number;
 }
 
-export interface Segment {
-  text: string;
-  src: number[];
-}
-
 export interface TranslateResult {
   source: string;
   target: string;
   srcTokens: Token[];
   translation: string;
-  segments: Segment[];
-  srcColors?: number[];
-  segColors?: number[];
-  aligned: boolean;
+  tgtTokens: Token[];
+  srcColors?: number[]; // per token: color index, -1 = uncolored; absent = no dictionary for this pair
+  tgtColors?: number[];
+  matched: number; // source words with a color
+  words: number;
   note?: string;
 }
 

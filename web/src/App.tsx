@@ -140,7 +140,7 @@ export function App() {
       )}
 
       <footer>
-        Dictionary: <a href="https://cc-cedict.org">CC-CEDICT</a> (CC BY-SA 4.0) · Audio: your device's speech voices · Translation: Claude ·{" "}
+        Dictionary: <a href="https://cc-cedict.org">CC-CEDICT</a> (CC BY-SA 4.0) · Audio: your device's speech voices · Translation: Google ·{" "}
         <a href="https://github.com/Blacklotus89898/Sprout">source</a>
       </footer>
     </div>
