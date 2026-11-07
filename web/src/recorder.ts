@@ -37,16 +37,22 @@ export function useRecorder() {
       setError("Recording needs HTTPS (or localhost).");
       return;
     }
+    // Create the audio graph now, while the click still counts as a user
+    // gesture: made after the permission prompt, Chrome starts it suspended
+    // and the live pitch line stays empty.
+    const ctx = new AudioContext();
+    void ctx.resume();
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
     } catch (e) {
+      void ctx.close();
       setError(e instanceof DOMException && e.name === "NotAllowedError" ? "Microphone permission was denied." : `No microphone: ${String(e)}`);
       return;
     }
-    const stopLive = listen(stream, setLive, raf);
+    const stopLive = listen(ctx, stream, setLive, raf);
     const chunks: Blob[] = [];
     const r = new MediaRecorder(stream);
     r.ondataavailable = (e) => e.data.size && chunks.push(e.data);
@@ -81,8 +87,8 @@ export function useRecorder() {
  * every animation frame, decimated to ~16 kHz so YIN stays cheap on phones.
  * Returns a function that stops listening.
  */
-function listen(stream: MediaStream, onLive: (l: Live | null) => void, raf: { current?: number }): () => void {
-  const ctx = new AudioContext();
+function listen(ctx: AudioContext, stream: MediaStream, onLive: (l: Live | null) => void, raf: { current?: number }): () => void {
+  void ctx.resume();
   const an = ctx.createAnalyser();
   an.fftSize = 2048;
   ctx.createMediaStreamSource(stream).connect(an);

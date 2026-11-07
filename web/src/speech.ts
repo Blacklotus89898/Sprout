@@ -80,6 +80,9 @@ export function useSpeechProgress(): Progress | null {
 // Rough characters per second at rate 1, for the time-based estimate.
 const CPS: Record<string, number> = { "cmn-Hans": 5, "yue-Hant": 5 };
 let ticker: number | undefined;
+// Chrome drops events of an utterance that has been garbage-collected while
+// still speaking; holding it here keeps onend/onboundary firing.
+let current: SpeechSynthesisUtterance | null = null;
 
 /** Speak text, cancelling anything already playing. */
 export function speak(text: string, pack: string, voice: SpeechSynthesisVoice | undefined, slow: boolean) {
@@ -111,9 +114,11 @@ export function speak(text: string, pack: string, voice: SpeechSynthesisVoice | 
   // A cancel() fires onerror ("interrupted") or onend: either way, not speaking.
   u.onend = u.onerror = () => {
     window.clearInterval(mine);
+    if (current === u) current = null;
     setSpeaking(speechSynthesis.speaking);
     if (!speechSynthesis.speaking) setProgress(null);
   };
+  current = u;
   speechSynthesis.speak(u);
 }
 

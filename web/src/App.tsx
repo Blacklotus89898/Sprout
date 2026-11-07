@@ -122,30 +122,33 @@ export function App() {
 
       {result && (
         <main className="reader-layout">
-          <article className="reader" lang={result.lang}>
-            {result.tokens.map((t, i) => (
-              <TokenView key={i} t={t} showReading={showReading} active={i === selected} speaking={i === speakingAt} onPick={() => pick(i)} />
-            ))}
-            <p className="stats">
-              {canSpeak && (
-                <button className="speak" onClick={() => say(fullText)} aria-label="Read the whole text aloud">
-                  🔊 Read aloud
-                </button>
+          <div className="reader-col">
+            <article className="reader" lang={result.lang}>
+              {result.tokens.map((t, i) => (
+                <TokenView key={i} t={t} showReading={showReading} active={i === selected} speaking={i === speakingAt} onPick={() => pick(i)} />
+              ))}
+              <p className="stats">
+                {canSpeak && (
+                  <button className="speak" onClick={() => say(fullText)} aria-label="Read the whole text aloud">
+                    🔊 Read aloud
+                  </button>
+                )}
+                {words} words · {result.known} in the dictionary
+                {current?.dictionary && <> · {current.dictionary}</>}
+              </p>
+              {speechSupported && !voice && (
+                <p className="stats">No voice for this language on this device. Install a Chinese (zh-CN) voice in your OS speech settings to hear it.</p>
               )}
-              {words} words · {result.known} in the dictionary
-              {current?.dictionary && <> · {current.dictionary}</>}
-            </p>
-            {speechSupported && !voice && (
-              <p className="stats">No voice for this language on this device. Install a Chinese (zh-CN) voice in your OS speech settings to hear it.</p>
-            )}
-          </article>
+            </article>
+            {features && <Translate langs={langs} features={features} initialText={fullText} initialLang={result.lang} slow={slow} />}
+          </div>
           <aside className="panel">
             {sel ? <WordPanel t={sel} onSpeak={canSpeak ? say : undefined} /> : <p className="hint">Tap a word to see its meaning.</p>}
           </aside>
         </main>
       )}
 
-      {features && <Translate langs={langs} features={features} initialText={result ? result.tokens.map((t) => t.text).join("") : text} initialLang={result?.lang ?? lang} slow={slow} />}
+      {features && !result && <Translate langs={langs} features={features} initialText={text} initialLang={lang} slow={slow} />}
 
       {speaking && (
         <>

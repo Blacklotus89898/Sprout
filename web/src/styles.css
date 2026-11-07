@@ -174,3 +174,8 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .rec-progress { height: 4px; margin-top: 6px; background: var(--border); border-radius: 2px; overflow: hidden; }
 .rec-progress > span { display: block; height: 100%; background: var(--tone1); }
 .pitch .playhead { stroke: var(--accent); stroke-width: 2; }
+
+/* Translation sits directly under the reader, as one block with it */
+.reader-col { display: flex; flex-direction: column; min-width: 0; }
+.reader-col .reader { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.reader-col .translate { margin-top: 0; border-top: 1px dashed var(--border); border-top-left-radius: 0; border-top-right-radius: 0; }
