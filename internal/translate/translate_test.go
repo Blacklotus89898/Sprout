@@ -192,3 +192,22 @@ func TestUsageNotesEarnNoColor(t *testing.T) {
 		t.Errorf("书 ↔ book not matched")
 	}
 }
+
+func TestAlignBrowserTranslation(t *testing.T) {
+	r, err := Align(pack(t, "cmn-Hans"), "en", "今天天气很好", "The weather is very good today")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Matched < 3 || r.SrcColors == nil {
+		t.Fatalf("want ≥3 colored words (今天/天气/好), got %d", r.Matched)
+	}
+	for _, c := range []struct{ target, text, tr string }{
+		{"en", "你好", ""},
+		{"cmn-Hans", "你好", "hi"},
+		{"xx", "你好", "hi"},
+	} {
+		if _, err := Align(pack(t, "cmn-Hans"), c.target, c.text, c.tr); !errors.Is(err, ErrInput) {
+			t.Errorf("%+v: want ErrInput, got %v", c, err)
+		}
+	}
+}

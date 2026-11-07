@@ -185,6 +185,34 @@ func routes() http.Handler {
 		}
 	})
 
+	// POST /api/align {"lang","target","text","translation"} → dictionary word
+	// colors for a translation the browser made itself (Chrome's on-device
+	// Translator API). No key, no paid call, so no rate limit: it's local CPU.
+	mux.HandleFunc("POST /api/align", func(w http.ResponseWriter, r *http.Request) {
+		var in struct {
+			Lang        string `json:"lang"`
+			Target      string `json:"target"`
+			Text        string `json:"text"`
+			Translation string `json:"translation"`
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, maxTextBytes)
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+			return
+		}
+		p, ok := lang.Get(in.Lang)
+		if !ok {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "unknown lang " + in.Lang})
+			return
+		}
+		res, err := translate.Align(p, in.Target, in.Text, in.Translation)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, res)
+	})
+
 	// The React reader (web/). Without a build, a hint instead of a 404.
 	if files, ok := web.Dist(); ok {
 		mux.Handle("GET /", http.FileServerFS(files))

@@ -69,6 +69,43 @@ func New(e Engine) *Translator {
 // Translate translates text from the src pack into the target pack.
 func (t *Translator) Translate(ctx context.Context, src lang.Pack, target, text string) (*Result, error) {
 	text = strings.TrimSpace(text)
+	tgt, err := check(src, target, text)
+	if err != nil {
+		return nil, err
+	}
+	key := src.Code() + "\x00" + target + "\x00" + text
+	if r, ok := t.cache.get(key); ok {
+		return r, nil
+	}
+	out, note, err := t.Engine.Translate(ctx, text, src.Code(), target)
+	if err != nil {
+		return nil, err
+	}
+	res := build(t.Dict(), src, tgt, text, out, note)
+	t.cache.put(key, res)
+	return res, nil
+}
+
+// Align colors a translation made elsewhere: by the browser's built-in
+// translator (Chrome's on-device Translator API), so no key and no paid call
+// are needed. The coloring is the same dictionary-only step as Translate.
+func Align(src lang.Pack, target, text, translation string) (*Result, error) {
+	text, translation = strings.TrimSpace(text), strings.TrimSpace(translation)
+	tgt, err := check(src, target, text)
+	if err != nil {
+		return nil, err
+	}
+	switch {
+	case translation == "":
+		return nil, fmt.Errorf("%w: empty translation", ErrInput)
+	case utf8.RuneCountInString(translation) > 4*MaxRunes:
+		return nil, fmt.Errorf("%w: translation too long", ErrInput)
+	}
+	return build(dict.Default(), src, tgt, text, translation, ""), nil
+}
+
+// check validates a request and returns the target pack.
+func check(src lang.Pack, target, text string) (lang.Pack, error) {
 	tgt, ok := lang.Get(target)
 	switch {
 	case !ok || Targets[target] == "":
@@ -80,34 +117,29 @@ func (t *Translator) Translate(ctx context.Context, src lang.Pack, target, text 
 	case utf8.RuneCountInString(text) > MaxRunes:
 		return nil, fmt.Errorf("%w: text longer than %d characters", ErrInput, MaxRunes)
 	}
-	key := src.Code() + "\x00" + target + "\x00" + text
-	if r, ok := t.cache.get(key); ok {
-		return r, nil
-	}
+	return tgt, nil
+}
 
-	out, note, err := t.Engine.Translate(ctx, text, src.Code(), target)
-	if err != nil {
-		return nil, err
-	}
-	res := &Result{Source: src.Code(), Target: target, SrcTokens: src.Tokenize(text), Translation: out, TgtTokens: tgt.Tokenize(out), Note: note}
+// build tokenizes both sides and colors them.
+func build(d *dict.CEDICT, src, tgt lang.Pack, text, out, note string) *Result {
+	res := &Result{Source: src.Code(), Target: tgt.Code(), SrcTokens: src.Tokenize(text), Translation: out, TgtTokens: tgt.Tokenize(out), Note: note}
 	for _, tk := range res.SrcTokens {
 		if tk.Kind == lang.Word {
 			res.Words++
 		}
 	}
-	t.color(res)
-	t.cache.put(key, res)
-	return res, nil
+	color(d, res)
+	return res
 }
 
 // color fills SrcColors/TgtColors for Chinese ↔ English pairs.
-func (t *Translator) color(res *Result) {
+func color(d *dict.CEDICT, res *Result) {
 	var pairs [][2]int // (srcIndex, tgtIndex)
 	switch {
 	case isChinese(res.Source) && res.Target == "en":
-		pairs = dictLinks(t.Dict(), res.Source, res.SrcTokens, res.TgtTokens)
+		pairs = dictLinks(d, res.Source, res.SrcTokens, res.TgtTokens)
 	case res.Source == "en" && isChinese(res.Target):
-		for _, p := range dictLinks(t.Dict(), res.Target, res.TgtTokens, res.SrcTokens) {
+		for _, p := range dictLinks(d, res.Target, res.TgtTokens, res.SrcTokens) {
 			pairs = append(pairs, [2]int{p[1], p[0]})
 		}
 	default:

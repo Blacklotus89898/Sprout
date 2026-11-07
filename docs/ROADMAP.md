@@ -10,12 +10,13 @@ design choices get an ADR first; those items are marked *(ADR)*.
 - [x] Pronunciation with the device's speech voices, per word and for the whole text; slow mode; **Stop**
 - [x] History: last 100 texts and words, kept in the browser only
 - [x] Translation between Mandarin, Cantonese, Spanish and English (Google). **Word colors from the dictionary, no LLM** (ADR 0002): about 70% of words colored, and every color correct
+- [x] **On-device translation** in desktop Chrome (built-in Translator API): free, no key; the server key is only a fallback (ADR 0003)
 - [x] Bidirectional segmentation (他说明天 → 他|说|明天)
 - [x] **Record and replay** a word next to Sprout's voice, with a **tone check**: your pitch (YIN, in the browser) drawn over the textbook tone shapes, ✓/✗ per syllable, third-tone sandhi applied. Tones only; nothing uploaded
 
 ## Next: phase 1b, keeping what you learn
 
-1. [ ] **Accounts** *(ADR 0003: hosting + auth)*. You and your friends; magic-link email or passkeys. Every row has a `user_id` from day one.
+1. [ ] **Accounts** *(ADR 0004: hosting + auth)*. You and your friends; magic-link email or passkeys. Every row has a `user_id` from day one.
 2. [ ] **Cards:** "＋ Card" on a word saves the word, its reading, your chosen sense and the **sentence it came from**. Needs SQLite on a 1Gi PVC (Recreate rollout).
 3. [ ] **Known-word tracking:** words you mark known stop being highlighted; the reader shows "% of this text you know".
 4. [ ] **Import:** paste a URL (article text extraction), upload `.srt`/`.vtt` subtitles, or an EPUB chapter.
@@ -58,7 +59,7 @@ design choices get an ADR first; those items are marked *(ADR)*.
 
 ## Platform and operations
 
-25. [ ] **Public hosting for friends** *(ADR 0003)*: `sprout.lab.home` is LAN-only.
+25. [ ] **Public hosting for friends** *(ADR 0004)*: `sprout.lab.home` is LAN-only.
 26. [ ] **Mobile:** PWA install, offline cache of the dictionary and today's cards.
 27. [ ] **Cost guardrails for Google Translate:** per-user daily quota, a characters-used metric in `/metrics`, an alert before the free 500k/month runs out.
 28. [ ] **Persistent translation cache** in SQLite, so restarts don't pay twice.

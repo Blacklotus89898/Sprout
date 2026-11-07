@@ -79,3 +79,11 @@ export const translate = (lang: string, target: string, text: string) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ lang, target, text }),
   });
+
+// Colors for a translation the browser made itself (no key, no paid call).
+export const align = (lang: string, target: string, text: string, translation: string) =>
+  call<TranslateResult>("/api/align", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lang, target, text, translation }),
+  });
