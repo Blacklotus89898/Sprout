@@ -11,6 +11,7 @@ design choices get an ADR first; those items are marked *(ADR)*.
 - [x] History: last 100 texts and words, kept in the browser only
 - [x] Translation between Mandarin, Cantonese, Spanish and English (Google). **Word colors from the dictionary, no LLM** (ADR 0002): about 70% of words colored, and every color correct
 - [x] Bidirectional segmentation (他说明天 → 他|说|明天)
+- [x] **Record and replay** a word next to Sprout's voice, with a **tone check**: your pitch (YIN, in the browser) drawn over the textbook tone shapes, ✓/✗ per syllable, third-tone sandhi applied. Tones only; nothing uploaded
 
 ## Next: phase 1b, keeping what you learn
 
@@ -39,7 +40,7 @@ design choices get an ADR first; those items are marked *(ADR)*.
 
 ## Phase 4: speaking and pronunciation
 
-16. [ ] **Tone trainer:** record yourself, draw your pitch contour (F0, YIN in the browser) over the reference. Deterministic; nothing uploaded.
+16. [ ] **Tone trainer, next steps:** per-syllable timing from energy dips instead of an even split; sentence-level practice; 不/一 sandhi; a history of your scores.
 17. [ ] **Shadowing:** play a sentence, record yours, compare contours and timing.
 18. [ ] **Provider spike** *(ADR)*: Azure pronunciation assessment (verify zh-HK support) vs. a self-hosted model; cloud voices if device voices aren't good enough.
 19. [ ] **Minimal pairs drills** (mā/má/mǎ/mà; Cantonese 6 tones).

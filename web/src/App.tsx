@@ -3,6 +3,7 @@ import * as api from "./api";
 import type { Features, Language, ReadResult, Token } from "./api";
 import { MAX_HISTORY, useHistory, type HistoryItem } from "./history";
 import { speak, stop, supported as speechSupported, useSpeaking, useVoice } from "./speech";
+import { Practice } from "./Practice";
 import { Translate } from "./Translate";
 
 const SAMPLE =
@@ -212,6 +213,7 @@ function WordPanel({ t, onSpeak }: { t: Token; onSpeak?: (s: string) => void }) 
           {t.text} {speakBtn}
         </h2>
         <p className="hint">Not in the dictionary.</p>
+        <Practice key={t.text} word={t.text} syllables={[]} onSpeak={onSpeak && (() => onSpeak(t.text))} />
       </div>
     );
   }
@@ -237,6 +239,8 @@ function WordPanel({ t, onSpeak }: { t: Token; onSpeak?: (s: string) => void }) 
           </ol>
         </div>
       ))}
+      <h3 className="practice-title">Practice</h3>
+      <Practice key={t.text} word={t.text} syllables={t.senses[0].syllables ?? []} onSpeak={onSpeak && (() => onSpeak(t.text))} />
     </div>
   );
 }
