@@ -4,6 +4,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestPlatformEndpoints(t *testing.T) {
@@ -27,5 +28,27 @@ func TestPlatformEndpoints(t *testing.T) {
 		if rec.Code != c.code || !strings.Contains(rec.Body.String(), c.want) {
 			t.Errorf("%s %s: %d %q, want %d containing %q", c.method, c.path, rec.Code, rec.Body.String(), c.code, c.want)
 		}
+	}
+}
+
+func TestTranslateWithoutKey(t *testing.T) {
+	translator = nil
+	h := routes()
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest("POST", "/api/translate", strings.NewReader(`{"lang":"cmn-Hans","target":"en","text":"你好"}`)))
+	if rec.Code != 503 {
+		t.Fatalf("got %d %s", rec.Code, rec.Body)
+	}
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest("GET", "/api/features", nil))
+	if !strings.Contains(rec.Body.String(), `"translate":false`) {
+		t.Fatalf("features: %s", rec.Body)
+	}
+}
+
+func TestRateLimit(t *testing.T) {
+	l := newRateLimit(2, time.Hour)
+	if !l.allow() || !l.allow() || l.allow() {
+		t.Fatal("limit of 2 not enforced")
 	}
 }

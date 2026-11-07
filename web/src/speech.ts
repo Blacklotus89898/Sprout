@@ -37,6 +37,24 @@ export function useVoice(pack: string): SpeechSynthesisVoice | undefined {
   return pickVoice(voices, pack);
 }
 
+// "Speaking" state shared by every component: one engine, one queue.
+const listeners = new Set<(on: boolean) => void>();
+function setSpeaking(on: boolean) {
+  listeners.forEach((l) => l(on));
+}
+
+/** True while anything is being spoken (drives the Stop button). */
+export function useSpeaking(): boolean {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    listeners.add(setOn);
+    return () => {
+      listeners.delete(setOn);
+    };
+  }, []);
+  return on;
+}
+
 /** Speak text, cancelling anything already playing. */
 export function speak(text: string, pack: string, voice: SpeechSynthesisVoice | undefined, slow: boolean) {
   if (!supported || !text.trim()) return;
@@ -45,5 +63,15 @@ export function speak(text: string, pack: string, voice: SpeechSynthesisVoice | 
   u.lang = voice?.lang ?? SPEECH_LANG[pack] ?? pack;
   if (voice) u.voice = voice;
   u.rate = slow ? 0.6 : 0.9; // learners: a touch below native speed by default
+  u.onstart = () => setSpeaking(true);
+  // A cancel() fires onerror ("interrupted") or onend: either way, not speaking.
+  u.onend = u.onerror = () => setSpeaking(speechSynthesis.speaking);
   speechSynthesis.speak(u);
+}
+
+/** Stop all speech now. */
+export function stop() {
+  if (!supported) return;
+  speechSynthesis.cancel();
+  setSpeaking(false);
 }

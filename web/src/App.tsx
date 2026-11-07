@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import * as api from "./api";
-import type { Language, ReadResult, Token } from "./api";
+import type { Features, Language, ReadResult, Token } from "./api";
 import { MAX_HISTORY, useHistory, type HistoryItem } from "./history";
-import { speak, supported as speechSupported, useVoice } from "./speech";
+import { speak, stop, supported as speechSupported, useSpeaking, useVoice } from "./speech";
+import { Translate } from "./Translate";
 
 const SAMPLE =
   "我们每天学习中文。今天天气非常好，我和朋友一起去公园散步，然后在咖啡馆看书。";
@@ -20,9 +21,12 @@ export function App() {
   const [showHistory, setShowHistory] = useState(false);
   const history = useHistory();
   const voice = useVoice(result?.lang ?? lang);
+  const speaking = useSpeaking();
+  const [features, setFeatures] = useState<Features | null>(null);
 
   useEffect(() => {
     api.languages().then(setLangs).catch((e) => setError(String(e.message ?? e)));
+    api.features().then(setFeatures).catch(() => setFeatures(null));
   }, []);
 
   async function readText(l: string, t: string, record = true) {
@@ -127,8 +131,16 @@ export function App() {
         </main>
       )}
 
+      {features && <Translate langs={langs} features={features} initialText={result ? result.tokens.map((t) => t.text).join("") : text} initialLang={result?.lang ?? lang} slow={slow} />}
+
+      {speaking && (
+        <button className="stop" onClick={stop} aria-label="Stop audio">
+          ■ Stop
+        </button>
+      )}
+
       <footer>
-        Dictionary: <a href="https://cc-cedict.org">CC-CEDICT</a> (CC BY-SA 4.0) · Audio: your device's speech voices ·{" "}
+        Dictionary: <a href="https://cc-cedict.org">CC-CEDICT</a> (CC BY-SA 4.0) · Audio: your device's speech voices · Translation: Claude ·{" "}
         <a href="https://github.com/Blacklotus89898/Sprout">source</a>
       </footer>
     </div>

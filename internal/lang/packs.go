@@ -70,4 +70,6 @@ func init() {
 		maxRunes: func() int { return 4 },
 	})
 	Register(&latinPack{code: "es", name: "Spanish"})
+	// English: the learner's side of a translation (source or target).
+	Register(&latinPack{code: "en", name: "English"})
 }

@@ -20,7 +20,10 @@ Design: [ADR 0001](docs/adr/0001-architecture.md).
 into words using the embedded CC-CEDICT. Each word shows tone-colored pinyin;
 tap one to see its readings and definitions. 🔊 plays a word or the whole text
 through the device's own speech voices (nothing is recorded). History keeps the
-last 100 texts and words in your browser only. Next is phase 1b: tap to make a
+last 100 texts and words in your browser only. **Translate** goes between
+Mandarin, Cantonese, Spanish and English with matching colors word by word
+(needs `ANTHROPIC_API_KEY`; without it the section says so). Feature list:
+[docs/ROADMAP.md](docs/ROADMAP.md). Next is phase 1b: tap to make a
 card, which needs storage. After that come reviews (FSRS), color-matched
 translation, speech, and the tutor (ADR 0001 phases).
 
@@ -43,6 +46,8 @@ curl -X POST localhost:8080/api/tokenize -d '{"lang":"yue-Hant","text":"我哋�
 | `GET /api/languages` | The registered language packs |
 | `POST /api/tokenize` | `{lang, text}` → tokens with byte offsets and kinds |
 | `POST /api/read` | `{lang, text}` → tokens, each word with dictionary senses (reading, tones, definitions) |
+| `GET /api/features` | What this deployment can do (translation on/off, targets) |
+| `POST /api/translate` | `{lang, target, text}` → segments + word colors (Claude; 30/min, cached) |
 | `GET /` | The reader (React app, embedded) |
 
 ## Layout
@@ -52,6 +57,7 @@ curl -X POST localhost:8080/api/tokenize -d '{"lang":"yue-Hant","text":"我哋�
 | `internal/lang` | Language packs: segmentation, romanization, script (deterministic) |
 | `internal/align` | Validates Claude's word-alignment proposals; maps tokens to colors |
 | `internal/dict` | CC-CEDICT parser plus the embedded export (`data/`) |
+| `internal/translate` | Translation pipeline: Claude proposes segments → `align` validates → colors |
 | `internal/pinyin` | Numbered pinyin → tone marks and tone numbers |
 | `web/` | React/TS reader (Vite); `npm run build` → `web/dist`, embedded by `web/embed.go` |
 | `docs/adr` | Decisions |

@@ -51,3 +51,35 @@ export const read = (lang: string, text: string) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ lang, text }),
   });
+
+export interface Features {
+  translate: boolean;
+  translateTargets: { code: string; name: string }[];
+  translateMaxChars: number;
+}
+
+export interface Segment {
+  text: string;
+  src: number[];
+}
+
+export interface TranslateResult {
+  source: string;
+  target: string;
+  srcTokens: Token[];
+  translation: string;
+  segments: Segment[];
+  srcColors?: number[];
+  segColors?: number[];
+  aligned: boolean;
+  note?: string;
+}
+
+export const features = () => call<Features>("/api/features");
+
+export const translate = (lang: string, target: string, text: string) =>
+  call<TranslateResult>("/api/translate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lang, target, text }),
+  });

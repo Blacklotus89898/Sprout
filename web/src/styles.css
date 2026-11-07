@@ -119,3 +119,30 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .badge { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; padding: 1px 6px; border-radius: 4px; background: var(--active); color: var(--accent); }
 .badge.word { color: var(--tone4); }
 @media (max-width: 520px) { .history time { display: none; } .history-item { grid-template-columns: auto minmax(0, 1fr); } }
+
+/* Stop button: floats while audio plays, reachable from anywhere on the page */
+.stop {
+  position: fixed; right: 16px; bottom: 16px; z-index: 10;
+  font: inherit; font-weight: 600; padding: 10px 16px; border-radius: 999px; cursor: pointer;
+  background: var(--tone1); color: #fff; border: 0; box-shadow: 0 4px 14px rgb(0 0 0 / .25);
+}
+
+/* Translation */
+.translate { margin-top: 24px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.translate h2 { margin: 0 0 8px; font-size: 1.2rem; }
+.translate .controls > button.secondary { background: var(--card); color: var(--fg); border-color: var(--border); }
+.pair { margin-top: 12px; }
+.side { font-size: 1.4rem; line-height: 1.9; margin: 0 0 8px; }
+.side.target { font-size: 1.2rem; }
+.piece { border-radius: 4px; padding: 0 1px; cursor: pointer; transition: opacity .1s; }
+.piece.dim { opacity: .35; }
+.piece.focus { outline: 2px solid currentColor; }
+.speak.inline { margin-left: 8px; font-size: .9rem; }
+.hint.small { font-size: .8rem; }
+/* 10 alignment colors: distinct hues, readable as text on both themes */
+.c0 { color: #c2410c; } .c1 { color: #1d4ed8; } .c2 { color: #15803d; } .c3 { color: #a21caf; } .c4 { color: #b45309; }
+.c5 { color: #0e7490; } .c6 { color: #be123c; } .c7 { color: #4d7c0f; } .c8 { color: #6d28d9; } .c9 { color: #0f766e; }
+@media (prefers-color-scheme: dark) {
+  .c0 { color: #fb923c; } .c1 { color: #93c5fd; } .c2 { color: #86efac; } .c3 { color: #f0abfc; } .c4 { color: #fcd34d; }
+  .c5 { color: #67e8f9; } .c6 { color: #fda4af; } .c7 { color: #bef264; } .c8 { color: #c4b5fd; } .c9 { color: #5eead4; }
+}
