@@ -18,7 +18,9 @@ Design: [ADR 0001](docs/adr/0001-architecture.md).
 
 **Phase 1a: the Mandarin reader is live.** Paste Chinese text and it is split
 into words using the embedded CC-CEDICT. Each word shows tone-colored pinyin;
-tap one to see its readings and definitions. Next is phase 1b: tap to make a
+tap one to see its readings and definitions. 🔊 plays a word or the whole text
+through the device's own speech voices (nothing is recorded). History keeps the
+last 100 texts and words in your browser only. Next is phase 1b: tap to make a
 card, which needs storage. After that come reviews (FSRS), color-matched
 translation, speech, and the tutor (ADR 0001 phases).
 

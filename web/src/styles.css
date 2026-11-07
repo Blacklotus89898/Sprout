@@ -95,3 +95,27 @@ ruby rt { font-size: .45em; letter-spacing: .02em; }
 
 footer { margin-top: 24px; font-size: .85rem; }
 footer a { color: var(--accent); }
+
+/* Pronunciation + history */
+button.link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; margin-left: auto; }
+.speak {
+  font-size: 1rem; line-height: 1.2; padding: 2px 8px; margin-right: 8px; cursor: pointer;
+  background: var(--active); border: 1px solid var(--border); border-radius: 999px; vertical-align: middle;
+}
+.headword .speak { font-size: 1rem; margin-left: 8px; }
+
+.history { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin-top: 12px; }
+.history-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.history-head .link { margin-left: auto; }
+.history ul { list-style: none; margin: 8px 0 0; padding: 0; max-height: 320px; overflow: auto; }
+.history-item {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center;
+  width: 100%; text-align: left; font: inherit; color: inherit; background: none;
+  border: 0; border-top: 1px solid var(--border); padding: 6px 0; cursor: pointer;
+}
+.history-item:hover { background: var(--active); }
+.history-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history time { font-size: .8rem; }
+.badge { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; padding: 1px 6px; border-radius: 4px; background: var(--active); color: var(--accent); }
+.badge.word { color: var(--tone4); }
+@media (max-width: 520px) { .history time { display: none; } .history-item { grid-template-columns: auto minmax(0, 1fr); } }
