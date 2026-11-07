@@ -8,7 +8,17 @@ import { MAX_SECONDS, supported, useRecorder } from "./recorder";
 
 const W = 280, H = 120, ST = 8; // chart size; y axis spans ±8 semitones
 
-export function Practice({ word, syllables, onSpeak }: { word: string; syllables: Syllable[]; onSpeak?: () => void }) {
+export function Practice({
+  word,
+  syllables,
+  onSpeak,
+  verdicts = true,
+}: {
+  word: string;
+  syllables: Syllable[];
+  onSpeak?: () => void;
+  verdicts?: boolean; // per-syllable ✓/✗; off for sentences, where an even split is too rough
+}) {
   const { recording, take, error, live, start, stop } = useRecorder();
   const audio = useRef<HTMLAudioElement>(null);
   const [playhead, setPlayhead] = useState<number | null>(null); // seconds into "Mine" while it plays
@@ -79,6 +89,7 @@ export function Practice({ word, syllables, onSpeak }: { word: string; syllables
         ) : (
           <>
             <Chart pts={analysis.pts} tones={syllables.map((s) => s.tone)} playhead={playhead} />
+            {verdicts && (
             <ul className="tone-checks">
               {analysis.checks.map((c, i) => (
                 <li key={i} className={c.ok === true ? "good" : c.ok === false ? "bad" : ""}>
@@ -87,9 +98,11 @@ export function Practice({ word, syllables, onSpeak }: { word: string; syllables
                 </li>
               ))}
             </ul>
+            )}
             <p className="hint small">
-              Dashed: the textbook tone shapes. Solid: your pitch. This checks tones only, not consonants or vowels, and splits your
-              recording evenly between syllables, so treat it as a rough guide.
+              {verdicts
+                ? "Dashed: the textbook tone shapes. Solid: your pitch. This checks tones only, not consonants or vowels, and splits your recording evenly between syllables, so treat it as a rough guide."
+                : "Dashed: the tone shapes of the sentence, in order. Solid: your pitch. Compare the ups and downs, then replay both."}
             </p>
           </>
         )

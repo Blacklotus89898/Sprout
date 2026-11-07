@@ -29,6 +29,13 @@ const CODE: Record<string, string> = { "cmn-Hans": "zh", "yue-Hant": "zh-Hant", 
 
 const cache = new Map<string, Promise<ChromeTranslator>>();
 
+/** True when this pair can translate right now, with no model download (so no click needed). */
+export async function ready(from: string, to: string): Promise<boolean> {
+  const s = CODE[from], t = CODE[to];
+  if (!api || !s || !t) return false;
+  return (await api.availability({ sourceLanguage: s, targetLanguage: t }).catch(() => "unavailable")) === "available";
+}
+
 /**
  * Translate on-device. Returns null when this browser can't do the pair, so
  * the caller can fall back to the server. onProgress gets 0–1 while a

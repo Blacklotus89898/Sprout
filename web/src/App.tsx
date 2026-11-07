@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as api from "./api";
 import type { Features, Language, ReadResult, Token } from "./api";
 import { MAX_HISTORY, useHistory, type HistoryItem } from "./history";
 import { speak, stop, supported as speechSupported, useSpeaking, useSpeechProgress, useVoice } from "./speech";
 import { Practice } from "./Practice";
+import { Shadow, sentences } from "./Shadow";
 import { Translate } from "./Translate";
 
 const SAMPLE =
@@ -25,10 +26,15 @@ export function App() {
   const speaking = useSpeaking();
   const progress = useSpeechProgress();
   const [features, setFeatures] = useState<Features | null>(null);
+  const [editing, setEditing] = useState(false); // text box open after a text has been read
+  const [sentence, setSentence] = useState(0); // shadowing position
 
   useEffect(() => {
     api.languages().then(setLangs).catch((e) => setError(String(e.message ?? e)));
     api.features().then(setFeatures).catch(() => setFeatures(null));
+    // Open on a ready-to-use reader instead of an empty page.
+    void readText("cmn-Hans", SAMPLE, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function readText(l: string, t: string, record = true) {
@@ -38,6 +44,8 @@ export function App() {
     try {
       const r = await api.read(l, t);
       setResult(r);
+      setEditing(false);
+      setSentence(0);
       if (record) history.add("text", l, t);
       return r;
     } catch (e) {
@@ -71,6 +79,8 @@ export function App() {
   const sel = selected !== null ? result?.tokens[selected] : undefined;
   const canSpeak = speechSupported && !!voice;
   const fullText = result ? result.tokens.map((t) => t.text).join("") : "";
+  const sents = useMemo(() => (result ? sentences(result.tokens) : []), [result]);
+  const showInput = !result || editing;
   // The token being spoken while the whole text is read aloud. Speech
   // positions are UTF-16 indexes, so walk the tokens in that unit.
   let speakingAt = -1;
@@ -112,11 +122,28 @@ export function App() {
             <input type="checkbox" checked={slow} onChange={(e) => setSlow(e.target.checked)} />
             slow audio
           </label>
-          <button onClick={() => readText(lang, text)} disabled={busy || !text.trim()}>
-            {busy ? "Reading…" : "Read"}
-          </button>
+          {showInput ? (
+            <button onClick={() => readText(lang, text)} disabled={busy || !text.trim()}>
+              {busy ? "Reading…" : "Read"}
+            </button>
+          ) : (
+            <button onClick={() => setEditing(true)}>✎ New text</button>
+          )}
+          {editing && result && (
+            <button className="secondary" onClick={() => setEditing(false)}>
+              Cancel
+            </button>
+          )}
         </div>
-        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} placeholder="Paste text in the language you're learning" />
+        {showInput && (
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={4}
+            autoFocus={editing}
+            placeholder="Paste text in the language you're learning: an article, lyrics, a message from a friend…"
+          />
+        )}
         {error && <p className="error">{error}</p>}
       </section>
 
@@ -136,11 +163,22 @@ export function App() {
                 {words} words · {result.known} in the dictionary
                 {current?.dictionary && <> · {current.dictionary}</>}
               </p>
+              <p className="stats">
+                Tap any word for its meaning, its sound and pronunciation practice.
+                {current?.romanization === "pinyin" && (
+                  <span className="legend" aria-label="Tone colors">
+                    {" "}
+                    Tones: <span className="tone1">1 ā</span> <span className="tone2">2 á</span> <span className="tone3">3 ǎ</span>{" "}
+                    <span className="tone4">4 à</span> <span className="tone5">neutral a</span>
+                  </span>
+                )}
+              </p>
               {speechSupported && !voice && (
                 <p className="stats">No voice for this language on this device. Install a Chinese (zh-CN) voice in your OS speech settings to hear it.</p>
               )}
             </article>
-            {features && <Translate langs={langs} features={features} initialText={fullText} initialLang={result.lang} slow={slow} />}
+            {features && <Translate langs={langs} features={features} initialText={fullText} initialLang={result.lang} slow={slow} attached />}
+            <Shadow list={sents} index={Math.min(sentence, sents.length - 1)} onIndex={setSentence} onSpeak={canSpeak ? say : undefined} />
           </div>
           <aside className="panel">
             {sel ? <WordPanel t={sel} onSpeak={canSpeak ? say : undefined} /> : <p className="hint">Tap a word to see its meaning.</p>}

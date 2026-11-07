@@ -19,12 +19,14 @@ export function Translate({
   initialText,
   initialLang,
   slow,
+  attached = false,
 }: {
   langs: Language[];
   features: Features;
   initialText: string;
   initialLang: string;
   slow: boolean;
+  attached?: boolean; // under the reader: translates the text being read, so no source picker or text box
 }) {
   const [from, setFrom] = useState(initialLang);
   const [to, setTo] = useState("en");
@@ -40,6 +42,19 @@ export function Translate({
   // Follow the reader's text and language until the user edits here.
   useEffect(() => setText(initialText), [initialText]);
   useEffect(() => setFrom(initialLang), [initialLang]);
+  // When the on-device model is already there, translating is free and
+  // instant: do it as soon as a text is read, so the meaning sits under it.
+  useEffect(() => {
+    let live = true;
+    if (initialText.trim() && initialLang !== to && [...initialText].length <= features.translateMaxChars) {
+      void browser.ready(initialLang, to).then((ok) => {
+        if (ok && live) void run(initialLang, to, initialText);
+      });
+    }
+    return () => {
+      live = false;
+    };
+  }, [initialText, initialLang]);
 
   async function run(f = from, t = to, s = text) {
     setBusy(true);
@@ -92,8 +107,10 @@ export function Translate({
 
   return (
     <section className="translate">
-      <h2>Translate</h2>
+      {!attached && <h2>Translate</h2>}
       <div className="controls">
+        {attached && <span className="hint">Translate to</span>}
+        {!attached && (
         <select value={from} onChange={(e) => setFrom(e.target.value)} aria-label="From">
           {langs.map((l) => (
             <option key={l.code} value={l.code}>
@@ -101,9 +118,12 @@ export function Translate({
             </option>
           ))}
         </select>
+        )}
+        {!attached && (
         <button className="secondary" onClick={swap} disabled={busy} aria-label="Swap languages" title="Swap (translates the result back)">
           ⇄
         </button>
+        )}
         <select value={to} onChange={(e) => setTo(e.target.value)} aria-label="To">
           {features.translateTargets.map((t) => (
             <option key={t.code} value={t.code}>
@@ -115,7 +135,7 @@ export function Translate({
           {busy ? (progress !== null && progress < 1 ? `Downloading model ${Math.round(progress * 100)}%` : "Translating…") : "Translate"}
         </button>
       </div>
-      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder="Text to translate" />
+      {!attached && <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder="Text to translate" />}
       {tooLong && <p className="error">Up to {features.translateMaxChars} characters per translation.</p>}
       {from === to && <p className="hint">Pick two different languages.</p>}
       {error && <p className="error">{error}</p>}

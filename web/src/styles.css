@@ -179,3 +179,18 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .reader-col { display: flex; flex-direction: column; min-width: 0; }
 .reader-col .reader { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .reader-col .translate { margin-top: 0; border-top: 1px dashed var(--border); border-top-left-radius: 0; border-top-right-radius: 0; }
+
+/* First-run guidance and the tone legend */
+.legend { white-space: nowrap; }
+.legend > span { font-weight: 600; }
+.controls > button.secondary { background: var(--card); color: var(--fg); border-color: var(--border); }
+
+/* Shadowing */
+.shadow { margin-top: 16px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.shadow-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.shadow-head h2 { margin: 0; font-size: 1.2rem; }
+.shadow-nav { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.shadow-nav button { cursor: pointer; background: var(--card); }
+.shadow-nav button:disabled { opacity: .4; cursor: default; }
+.shadow-text { font-size: 1.5rem; margin: 10px 0; line-height: 1.6; }
+.shadow-pinyin { display: block; font-size: 1rem; font-weight: 600; }
