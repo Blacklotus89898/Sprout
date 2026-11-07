@@ -122,9 +122,9 @@ UX, a frontend, retention. Infrastructure is the smaller part.
 | 5 | Conversation tutor: chat, corrections become cards | A 10-minute session produces cards |
 | 6 | Public hosting + auth for friends (ADR 0002) | A friend signs up |
 
-**Open question for the operator:** which language comes first in phase 1? The
-proposal is **Mandarin**, which has the best data and tools; Cantonese and Spanish
-follow as packs. The architecture doesn't change, only the order.
+**First language: Mandarin** (operator decision, 2026-11-07). It has the best data
+and tools. Cantonese and Spanish follow as packs; the architecture doesn't change,
+only the order.
 
 ## Consequences
 
