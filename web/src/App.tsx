@@ -6,11 +6,19 @@ import { speak, stop, supported as speechSupported, useSpeaking, useSpeechProgre
 import { Practice } from "./Practice";
 import { Shadow, sentences } from "./Shadow";
 import { Translate } from "./Translate";
+import { TokenView } from "./Tokens";
+import { Tutor } from "./Tutor";
+import { Words } from "./Words";
+import { useCards, type Card } from "./cards";
 
 const SAMPLE =
   "我们每天学习中文。今天天气非常好，我和朋友一起去公园散步，然后在咖啡馆看书。";
 
+type Mode = "read" | "words" | "tutor";
+
 export function App() {
+  const [mode, setMode] = useState<Mode>("read");
+  const cards = useCards();
   const [langs, setLangs] = useState<Language[]>([]);
   const [lang, setLang] = useState("cmn-Hans");
   const [text, setText] = useState(SAMPLE);
@@ -22,7 +30,8 @@ export function App() {
   const [slow, setSlow] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const history = useHistory();
-  const voice = useVoice(result?.lang ?? lang);
+  const voicePack = mode === "read" ? (result?.lang ?? lang) : lang;
+  const voice = useVoice(voicePack);
   const speaking = useSpeaking();
   const progress = useSpeechProgress();
   const [features, setFeatures] = useState<Features | null>(null);
@@ -73,7 +82,19 @@ export function App() {
     }
   }
 
-  const say = (s: string) => speak(s, result?.lang ?? lang, voice, slow);
+  const say = (s: string) => speak(s, voicePack, voice, slow);
+  // Saved words can be in another language than the one selected.
+  const sayIn = (s: string, l: string) => speak(s, l, l === voicePack ? voice : undefined, slow);
+
+  async function openCard(c: Card) {
+    setMode("read");
+    setLang(c.lang);
+    const t = c.sentence || c.word;
+    setText(t);
+    const r = await readText(c.lang, t, false);
+    const i = r ? r.tokens.findIndex((x) => x.text === c.word) : -1;
+    if (i >= 0) setSelected(i);
+  }
   const current = langs.find((l) => l.code === lang);
   const words = result?.tokens.filter((t) => t.kind === "word").length ?? 0;
   const sel = selected !== null ? result?.tokens[selected] : undefined;
@@ -81,6 +102,8 @@ export function App() {
   const fullText = result ? result.tokens.map((t) => t.text).join("") : "";
   const sents = useMemo(() => (result ? sentences(result.tokens) : []), [result]);
   const showInput = !result || editing;
+  const selSentence = selected !== null ? sents.find((x) => selected >= x.start && selected < x.end)?.text ?? "" : "";
+  const studying = cards.cards.filter((c) => c.lang === lang).map((c) => c.word);
   // The token being spoken while the whole text is read aloud. Speech
   // positions are UTF-16 indexes, so walk the tokens in that unit.
   let speakingAt = -1;
@@ -98,6 +121,19 @@ export function App() {
       <header>
         <h1>🌱 Sprout</h1>
         <span className="tagline">Read real text. Tap a word.</span>
+        <nav className="modes" aria-label="Sections">
+          {(
+            [
+              ["read", "📖 Read"],
+              ["words", `⭐ Words${cards.due.length ? ` (${cards.due.length} due)` : ""}`],
+              ["tutor", "💬 Tutor"],
+            ] as [Mode, string][]
+          ).map(([m, label]) => (
+            <button key={m} className={`mode${mode === m ? " on" : ""}`} onClick={() => setMode(m)} aria-current={mode === m ? "page" : undefined}>
+              {label}
+            </button>
+          ))}
+        </nav>
         <button className="link" onClick={() => setShowHistory((v) => !v)} aria-expanded={showHistory}>
           History ({history.items.length})
         </button>
@@ -105,6 +141,43 @@ export function App() {
 
       {showHistory && <HistoryList items={history.items} onOpen={reopen} onClear={history.clear} />}
 
+      {mode === "words" && <Words cards={cards} onSpeak={speechSupported ? sayIn : undefined} onOpen={openCard} />}
+
+      {mode === "tutor" && (
+        <>
+          <section className="input">
+            <div className="controls">
+              <select value={lang} onChange={(e) => setLang(e.target.value)} aria-label="Language">
+                {langs.map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+              <label className="toggle">
+                <input type="checkbox" checked={showReading} onChange={(e) => setShowReading(e.target.checked)} />
+                {current?.romanization ?? "reading"}
+              </label>
+              <label className="toggle" title="Slower speech">
+                <input type="checkbox" checked={slow} onChange={(e) => setSlow(e.target.checked)} />
+                slow audio
+              </label>
+            </div>
+          </section>
+          <Tutor
+            pack={lang}
+            langName={current?.name ?? lang}
+            studying={studying}
+            showReading={showReading}
+            onSpeak={canSpeak ? say : undefined}
+            isSaved={(w) => cards.has(lang, w)}
+            onSave={cards.add}
+          />
+        </>
+      )}
+
+      {mode === "read" && (
+        <>
       <section className="input">
         <div className="controls">
           <select value={lang} onChange={(e) => setLang(e.target.value)} aria-label="Language">
@@ -152,7 +225,7 @@ export function App() {
           <div className="reader-col">
             <article className="reader" lang={result.lang}>
               {result.tokens.map((t, i) => (
-                <TokenView key={i} t={t} showReading={showReading} active={i === selected} speaking={i === speakingAt} onPick={() => pick(i)} />
+                <TokenView key={i} t={t} showReading={showReading} active={i === selected} speaking={i === speakingAt} saved={t.kind === "word" && cards.has(result.lang, t.text)} onPick={() => pick(i)} />
               ))}
               <p className="stats">
                 {canSpeak && (
@@ -181,12 +254,21 @@ export function App() {
             <Shadow list={sents} index={Math.min(sentence, sents.length - 1)} onIndex={setSentence} onSpeak={canSpeak ? say : undefined} />
           </div>
           <aside className="panel">
-            {sel ? <WordPanel t={sel} onSpeak={canSpeak ? say : undefined} /> : <p className="hint">Tap a word to see its meaning.</p>}
+            {sel ? (
+              <WordPanel
+                t={sel}
+                onSpeak={canSpeak ? say : undefined}
+                saved={cards.has(result.lang, sel.text)}
+                onSave={() => sel.senses?.[0] && cards.add({ lang: result.lang, word: sel.text, syllables: sel.senses[0].syllables ?? [], defs: sel.senses[0].defs, sentence: selSentence })}
+              />
+            ) : <p className="hint">Tap a word to see its meaning.</p>}
           </aside>
         </main>
       )}
 
       {features && !result && <Translate langs={langs} features={features} initialText={text} initialLang={lang} slow={slow} />}
+        </>
+      )}
 
       {speaking && (
         <>
@@ -247,26 +329,7 @@ function HistoryList({ items, onOpen, onClear }: { items: HistoryItem[]; onOpen:
   );
 }
 
-function TokenView({ t, showReading, active, speaking, onPick }: { t: Token; showReading: boolean; active: boolean; speaking: boolean; onPick: () => void }) {
-  if (t.kind !== "word") return <span className={`${t.kind}${speaking ? " speaking" : ""}`}>{t.text}</span>;
-  const sense = t.senses?.[0];
-  const syl = sense?.syllables ?? [];
-  const chars = [...t.text];
-  // Color per character by tone only when syllables line up 1:1 with characters.
-  const aligned = syl.length === chars.length;
-  return (
-    <button className={`word${active ? " active" : ""}${speaking ? " speaking" : ""}${sense ? "" : " unknown"}`} onClick={onPick} title={sense?.defs[0]}>
-      {chars.map((c, i) => (
-        <ruby key={i} className={aligned ? `tone${syl[i].tone}` : undefined}>
-          {c}
-          <rt>{showReading && aligned ? syl[i].text : ""}</rt>
-        </ruby>
-      ))}
-    </button>
-  );
-}
-
-function WordPanel({ t, onSpeak }: { t: Token; onSpeak?: (s: string) => void }) {
+function WordPanel({ t, onSpeak, saved, onSave }: { t: Token; onSpeak?: (s: string) => void; saved: boolean; onSave: () => void }) {
   const speakBtn = onSpeak && (
     <button className="speak" onClick={() => onSpeak(t.text)} aria-label={`Pronounce ${t.text}`}>
       🔊
@@ -288,6 +351,9 @@ function WordPanel({ t, onSpeak }: { t: Token; onSpeak?: (s: string) => void }) 
       <h2 className="headword">
         {t.text}
         {t.senses[0].variant && <span className="variant">{t.senses[0].variant}</span>} {speakBtn}
+        <button className="save" onClick={onSave} disabled={saved} title={saved ? "In your saved words" : "Save for review"}>
+          {saved ? "✓ Saved" : "＋ Save"}
+        </button>
       </h2>
       {t.senses.map((s, i) => (
         <div key={i} className="sense">

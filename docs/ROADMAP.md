@@ -14,12 +14,14 @@ design choices get an ADR first; those items are marked *(ADR)*.
 - [x] **Shadowing:** step through the text phrase by phrase; hear it, record yourself, replay both, compare pitch with the phrase's tone shapes
 - [x] **First-run UX:** opens on a ready sample, the text box folds away after Read, a tone-color legend, translation joined under the reader (auto-runs when the on-device model is ready)
 - [x] Bidirectional segmentation (他说明天 → 他|说|明天)
+- [x] **Saved words + review** (ADR 0005): ＋ Save on any word (reader or tutor) keeps the word, reading, meaning and its sentence; flashcard review with Again/Good/Easy on a Leitner schedule; export/import JSON. Browser-only for now
+- [x] **Conversation tutor, on-device** (ADR 0005): Chrome's built-in Gemini Nano, free and private; 5 role-play scenarios, 2 levels; replies validated and run through the dictionary (tappable, pinyin); "Try saying…" suggestions, never grades. Spanish official, Mandarin experimental until Chrome supports Chinese
 - [x] **Record and replay** a word next to Sprout's voice, with a **tone check**: your pitch (YIN, in the browser) drawn over the textbook tone shapes, ✓/✗ per syllable, third-tone sandhi applied. Tones only; nothing uploaded
 
 ## Next: phase 1b, keeping what you learn
 
 1. [ ] **Accounts** *(ADR 0004: hosting + auth)*. You and your friends; magic-link email or passkeys. Every row has a `user_id` from day one.
-2. [ ] **Cards:** "＋ Card" on a word saves the word, its reading, your chosen sense and the **sentence it came from**. Needs SQLite on a 1Gi PVC (Recreate rollout).
+2. [ ] **Cards on the server:** (browser-only cards shipped, ADR 0005; this moves them to SQLite, import from the export file) "＋ Card" on a word saves the word, its reading, your chosen sense and the **sentence it came from**. Needs SQLite on a 1Gi PVC (Recreate rollout).
 3. [ ] **Known-word tracking:** words you mark known stop being highlighted; the reader shows "% of this text you know".
 4. [ ] **Import:** paste a URL (article text extraction), upload `.srt`/`.vtt` subtitles, or an EPUB chapter.
 5. [ ] **Server-side history:** replaces the browser-only list once accounts exist (opt-in).
@@ -50,7 +52,7 @@ design choices get an ADR first; those items are marked *(ADR)*.
 
 ## Phase 5: conversation tutor
 
-20. [ ] **Chat tutor** at your level (uses your known words), with corrections inline; each correction can become a card.
+20. [ ] **Chat tutor, next:** a stronger model for Mandarin if Gemini Nano's Chinese is weak (self-hosted Qwen via Ollama, or a paid API; *ADR*); a suggestion becomes a card. Shipped on-device v1 (ADR 0005). Original goal: **chat tutor** at your level (uses your known words), with corrections inline; each correction can become a card.
 21. [ ] **Voice conversation:** speech in, speech out, tone feedback after each turn.
 22. [ ] **Scenarios:** ordering food, directions, small talk; graded by HSK level.
 

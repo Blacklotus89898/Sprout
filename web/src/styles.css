@@ -194,3 +194,59 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .shadow-nav button:disabled { opacity: .4; cursor: default; }
 .shadow-text { font-size: 1.5rem; margin: 10px 0; line-height: 1.6; }
 .shadow-pinyin { display: block; font-size: 1rem; font-weight: 600; }
+
+/* Sections: Read / Words / Tutor */
+.modes { display: flex; gap: 4px; flex-wrap: wrap; }
+.mode { cursor: pointer; background: var(--card); border-radius: 999px; padding: 4px 12px; }
+.mode.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.word.saved { box-shadow: inset 0 -2px 0 var(--tone3); }
+.save { cursor: pointer; font-size: .85rem; margin-left: 8px; vertical-align: middle; background: var(--card); border-radius: 999px; padding: 2px 10px; }
+.save:disabled { color: var(--accent); cursor: default; }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); cursor: pointer; }
+button.primary:disabled { opacity: .5; cursor: default; }
+button.secondary { cursor: pointer; background: var(--card); }
+
+/* Saved words and review */
+.words, .tutor { margin-top: 16px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.words-head, .tutor-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; margin-bottom: 8px; }
+.words-head h2, .tutor-head h2, .tutor > h2 { margin: 0; font-size: 1.2rem; }
+.words-head > button { margin-left: auto; }
+.word-list { list-style: none; padding: 0; margin: 8px 0; max-height: 60vh; overflow: auto; }
+.word-list li { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto; gap: 10px; align-items: baseline; padding: 6px 4px; border-bottom: 1px solid var(--border); }
+.word-list .w { font-size: 1.3rem; color: var(--fg); }
+.word-list .def { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.word-list .remove { margin-left: 0; color: var(--muted); }
+.word-list .word-open { margin-left: 0; }
+.flash { text-align: center; padding: 8px 0; }
+.flash-word { font-size: 3rem; line-height: 1.2; margin: 8px 0; }
+.flash .reading { font-size: 1.3rem; }
+.flash-defs { display: inline-block; text-align: left; margin: 8px auto; }
+.flash-sentence { font-size: 1.2rem; }
+.flash-sentence mark { background: var(--active); color: inherit; border-radius: 3px; }
+.grades { display: flex; gap: 8px; justify-content: center; margin: 12px 0; }
+.grade { cursor: pointer; display: flex; flex-direction: column; min-width: 90px; padding: 6px 12px; background: var(--card); }
+.grade.again { border-color: var(--tone1); }
+.grade.good { border-color: var(--accent); }
+.grade.easy { border-color: var(--tone2); }
+.flash .practice { text-align: left; max-width: 420px; margin: 0 auto; }
+
+/* Tutor */
+.warn { color: var(--tone4); font-weight: 600; }
+.chat { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; max-height: 60vh; overflow: auto; }
+.bubble { max-width: 85%; padding: 8px 12px; border-radius: 14px; border: 1px solid var(--border); }
+.bubble.me { align-self: flex-end; background: var(--active); font-size: 1.2rem; }
+.bubble.tutor { align-self: flex-start; background: var(--bg); }
+.bubble .reply { font-size: 1.4rem; line-height: 1.9; }
+.bubble .english { margin-left: 0; font-size: .9rem; text-align: left; }
+.suggestion { border-left: 3px solid var(--tone2); padding-left: 8px; margin-bottom: 6px; font-size: 1.1rem; }
+.gloss { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; }
+.gloss strong { font-size: 1.3rem; }
+.chat-input { display: flex; gap: 8px; }
+.chat-input input { flex: 1; min-width: 0; font: inherit; font-size: 1.1rem; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--fg); }
+.chat-input button { cursor: pointer; background: var(--accent); color: #fff; border-color: var(--accent); }
+.chat-input button:disabled { opacity: .5; }
+@media (max-width: 640px) {
+  .word-list li { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .word-list .card-reading, .word-list .due { display: none; }
+  .bubble { max-width: 100%; }
+}
