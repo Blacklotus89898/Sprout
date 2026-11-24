@@ -1,5 +1,7 @@
 # Sprout 🌱
 
+[![CI](https://github.com/Blacklotus89898/Sprout/actions/workflows/ci.yaml/badge.svg)](https://github.com/Blacklotus89898/Sprout/actions/workflows/ci.yaml)
+
 A language-learning platform for **Mandarin, Cantonese and Spanish**. You read real
 text, mine its words into cards, review them on a spaced-repetition schedule, and
 then speak: pronunciation, tones and conversation. Translations line up word by
@@ -16,17 +18,17 @@ Design: [ADR 0001](docs/adr/0001-architecture.md).
 
 ## Status
 
-**Phase 1a: the Mandarin reader is live.** Paste Chinese text and it is split
-into words using the embedded CC-CEDICT. Each word shows tone-colored pinyin;
-tap one to see its readings and definitions. 🔊 plays a word or the whole text
-through the device's own speech voices (nothing is recorded). History keeps the
-last 100 texts and words in your browser only. **Translate** goes between
-Mandarin, Cantonese, Spanish and English through Google Translate. Matching colors
-come from the dictionary, with no AI (ADR 0002). It needs `GOOGLE_TRANSLATE_API_KEY`;
-without it the section says so. Feature list:
-[docs/ROADMAP.md](docs/ROADMAP.md). Next is phase 1b: tap to make a
-card, which needs storage. After that come reviews (FSRS), color-matched
-translation, speech, and the tutor (ADR 0001 phases).
+**Shipped** (full list in [docs/ROADMAP.md](docs/ROADMAP.md)):
+
+- **Mandarin reader:** CC-CEDICT segmentation, tone-colored pinyin, tap a word for every reading and definition; 🔊 with the device's own voices.
+- **Translation** between Mandarin, Cantonese, Spanish and English, with word colors from the dictionary and no LLM (ADR 0002). On-device in desktop Chrome, free and keyless (ADR 0003); `GOOGLE_TRANSLATE_API_KEY` is only the fallback.
+- **Speaking:** record and replay a word next to Sprout's voice with a tone check, and phrase-by-phrase **shadowing** with pitch comparison.
+- **Saved words + review** (Leitner, in the browser) and an **on-device conversation tutor** (Chrome's Gemini Nano; ADR 0005).
+
+Nothing is recorded or stored server-side; history and saved words stay in your browser.
+
+**Next — phase 1b, keeping what you learn:** accounts (ADR 0004), cards on the server,
+known-word tracking, import. Then FSRS reviews (phase 2).
 
 ## Run
 
@@ -69,6 +71,15 @@ On every push to `main`, CI pushes `ghcr.io/blacklotus89898/sprout:<sha>`.
 The Homelab side (ArgoCD app, route `sprout.lab.home`, monitoring) comes from
 **Backstage → Create → New Homelab Service**. To roll out a new version, bump the
 SHA in Homelab `services/sprout/deployment.yaml`.
+
+## Docs
+
+- [docs/adr/](docs/adr/README.md) — decisions (read 0001 before changing the architecture)
+- [docs/ROADMAP.md](docs/ROADMAP.md) — the living feature list
+
+## Contributing
+
+Read [AGENTS.md](AGENTS.md) first — it is the guide for humans and coding agents alike: commands, layout, the rules that must not break, how to add a feature and how changes ship.
 
 ## Data credits
 
