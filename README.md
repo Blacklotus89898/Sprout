@@ -27,7 +27,7 @@ Design: [ADR 0001](docs/adr/0001-architecture.md).
 
 Nothing is recorded or stored server-side; history and saved words stay in your browser.
 
-**Next — phase 1b, keeping what you learn:** accounts (ADR 0004), cards on the server,
+**Next — phase 1b, keeping what you learn:** accounts (ADR 0004, to be written), cards on the server,
 known-word tracking, import. Then FSRS reviews (phase 2).
 
 ## Run
